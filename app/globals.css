@@ -1,26 +1,343 @@
+@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Montserrat:wght@200;300;400;500;600&display=swap');
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --bg: #121212;
+  --fg: #F5F5F0;
+  --gold: #C5A059;
+  --background: #121212;
+  --foreground: #F5F5F0;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-brand-gold: #C5A059;
+  --color-brand-dark: #121212;
+  --color-brand-gray: #2A2A2A;
+  --color-brand-light: #F5F5F0;
+  --font-serif: "Cormorant Garamond", serif;
+  --font-sans: "Montserrat", sans-serif;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+html {
+  scroll-behavior: smooth;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--bg);
+  color: var(--fg);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: geometricPrecision;
+  font-family: "Montserrat", sans-serif;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--gold);
+  border-radius: 4px;
+}
+
+/* Decorative outline stroke */
+.text-stroke {
+  -webkit-text-stroke: 1px rgba(197, 160, 89, 0.55);
+  color: rgba(245, 245, 240, 0.05);
+  text-shadow: 0 0 18px rgba(197, 160, 89, 0.1);
+  opacity: 0.75;
+}
+
+.img-container {
+  overflow: hidden;
+}
+
+.img-container img {
+  transition: transform 0.7s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+}
+
+.img-container:hover img {
+  transform: scale(1.1);
+}
+
+/* Loader */
+.loader {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  z-index: 9999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  animation: loaderSlideUp 0.9s ease-in-out 1.4s forwards;
+}
+
+.loader-logo {
+  opacity: 0;
+  transform: scale(0.8);
+  animation: logoFadeIn 0.9s ease-out 0.2s forwards;
+}
+
+.loader-brand-text {
+  font-family: "Cormorant Garamond", serif;
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  color: var(--gold);
+  opacity: 0;
+  transform: translateY(10px);
+  animation: loaderTextFadeIn 0.9s ease-out 0.5s forwards;
+}
+
+@keyframes logoFadeIn {
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes loaderTextFadeIn {
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes loaderSlideUp {
+  to {
+    transform: translateY(-100%);
+  }
+}
+
+/* Initial reveal */
+.reveal-on-load {
+  opacity: 0;
+  transform: translateY(14px);
+}
+
+/* Utility fallbacks for Tailwind brand classes */
+.text-brand-gold {
+  color: var(--gold) !important;
+}
+
+.bg-brand-gold {
+  background-color: var(--gold) !important;
+}
+
+.border-brand-gold {
+  border-color: var(--gold) !important;
+}
+
+.bg-brand-dark {
+  background-color: var(--bg) !important;
+}
+
+.bg-brand-gray {
+  background-color: #2a2a2a !important;
+}
+
+/* Focus visibility */
+:focus-visible {
+  outline: 2px solid var(--gold);
+  outline-offset: 3px;
+}
+
+/* Reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Glass + showcase helpers */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.showcase-frame {
+  position: relative;
+  border: 1px solid rgba(197, 160, 89, 0.25);
+  background: radial-gradient(700px circle at 20% 20%, rgba(197, 160, 89, 0.18), transparent 60%),
+    radial-gradient(600px circle at 80% 30%, rgba(255, 255, 255, 0.06), transparent 55%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(0, 0, 0, 0.15));
+  overflow: hidden;
+}
+
+.showcase-frame::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.06) 0px,
+    rgba(255, 255, 255, 0.06) 1px,
+    transparent 1px,
+    transparent 14px
+  );
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.showcase-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 22px;
+}
+
+/* Rotating text animation */
+.rotating-text {
+  display: inline-block;
+  animation: rotateText 8s infinite;
+}
+
+@keyframes rotateText {
+  0%, 25% { opacity: 1; transform: translateY(0); }
+  30%, 95% { opacity: 0; transform: translateY(-20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+/* Mobile-specific optimizations */
+@media (max-width: 768px) {
+  /* Hide scrollbar but keep functionality */
+  .scrollbar-hide {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+
+  .scrollbar-hide::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Smooth scrolling for horizontal cards */
+  .overflow-x-auto {
+    scroll-snap-type: x mandatory;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .overflow-x-auto > * {
+    scroll-snap-align: start;
+  }
+
+  /* Mobile touch feedback */
+  .active\:scale-95:active {
+    transform: scale(0.95);
+  }
+
+  /* Optimize font rendering on mobile */
+  body {
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+  }
+
+  /* Better mobile viewport handling */
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+
+  /* Prevent zoom on input focus */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* Tablet optimizations */
+@media (min-width: 640px) and (max-width: 1023px) {
+  ::-webkit-scrollbar {
+    width: 6px;
+  }
+}
+
+/* Touch device optimizations */
+@media (hover: none) and (pointer: coarse) {
+  /* Larger tap targets for mobile */
+  button,
+  a {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Remove hover states on touch devices */
+  .hover\:scale-105:hover,
+  .hover\:bg-brand-gold:hover {
+    transform: none;
+  }
+}
+
+/* Mobile menu animations */
+@keyframes slideInFromBottom {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.mobile-menu-item {
+  animation: slideInFromBottom 0.3s ease-out forwards;
+}
+
+/* Optimize parallax for mobile performance */
+@media (max-width: 768px) {
+  [style*="transform: translateY"] {
+    transform: none !important;
+  }
+}
+
+/* Loading skeleton for images */
+.skeleton {
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.05) 25%,
+    rgba(255, 255, 255, 0.1) 50%,
+    rgba(255, 255, 255, 0.05) 75%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+/* Safe area insets for notched devices */
+@supports (padding: max(0px)) {
+  .safe-area-top {
+    padding-top: max(1rem, env(safe-area-inset-top));
+  }
+
+  .safe-area-bottom {
+    padding-bottom: max(1rem, env(safe-area-inset-bottom));
+  }
 }
