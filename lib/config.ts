@@ -127,9 +127,9 @@ export const DELIVERY_TYPES = [
 ];
 
 export const STATS = [
-  { value: "100K+", label: "Deliveries Completed" },
-  { value: "99.2%", label: "On-Time Rate" },
-  { value: "5,000+", label: "Happy Clients" },
+  { value: "15K+", label: "Deliveries Completed" },
+  { value: "97%", label: "On-Time Rate" },
+  { value: "500+", label: "Happy Clients" },
   { value: "50+", label: "Countries Served" },
 ];
 
