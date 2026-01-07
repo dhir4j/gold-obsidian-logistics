@@ -27,7 +27,7 @@ export const NAVIGATION = [
   { label: "Home", href: "/" },
   { label: "About Us", href: "/about" },
   { label: "Services", href: "/services" },
-  { label: "Delivery", href: "/delivery" },
+  { label: "Pricing", href: "/pricing" },
   { label: "Tracking", href: "/tracking" },
   { label: "Contact", href: "/contact" },
 ];

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { BRAND, NAVIGATION } from "@/lib/config";
-import { Menu, X, Home, Package, Phone, User } from "lucide-react";
+import { Menu, X, Home, Package, Phone, User, DollarSign } from "lucide-react";
 import { useIsMobile } from "@/hooks/useIsMobile";
 
 export default function Navbar() {
@@ -37,6 +37,8 @@ export default function Navbar() {
         return <Home size={20} />;
       case "services":
         return <Package size={20} />;
+      case "pricing":
+        return <DollarSign size={20} />;
       case "contact":
         return <Phone size={20} />;
       default:
@@ -77,12 +79,20 @@ export default function Navbar() {
             ))}
           </div>
 
-          <Link
-            href="/signup"
-            className="hidden md:block px-6 py-2 border border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-black transition-all duration-300 font-sans text-xs tracking-widest uppercase"
-          >
-            Sign Up
-          </Link>
+          <div className="hidden md:flex items-center gap-3">
+            <Link
+              href="/login"
+              className="px-6 py-2 text-white hover:text-brand-gold transition-all duration-300 font-sans text-xs tracking-widest uppercase"
+            >
+              Login
+            </Link>
+            <Link
+              href="/signup"
+              className="px-6 py-2 border border-brand-gold text-brand-gold hover:bg-brand-gold hover:text-black transition-all duration-300 font-sans text-xs tracking-widest uppercase"
+            >
+              Sign Up
+            </Link>
+          </div>
 
           <button
             onClick={() => setMenuOpen(true)}
@@ -164,13 +174,23 @@ export default function Navbar() {
                   Track Shipment
                 </Link>
 
-                <Link
-                  href="/signup"
-                  className="block w-full border-2 border-white text-white py-4 px-6 font-sans text-sm tracking-widest uppercase font-semibold text-center active:scale-95 transition-transform"
-                  onClick={closeMenu}
-                >
-                  Sign Up
-                </Link>
+                <div className="grid grid-cols-2 gap-3">
+                  <Link
+                    href="/login"
+                    className="block w-full border-2 border-brand-gold text-brand-gold py-4 px-6 font-sans text-sm tracking-widest uppercase font-semibold text-center active:scale-95 transition-transform"
+                    onClick={closeMenu}
+                  >
+                    Login
+                  </Link>
+
+                  <Link
+                    href="/signup"
+                    className="block w-full bg-brand-gold text-black py-4 px-6 font-sans text-sm tracking-widest uppercase font-semibold text-center active:scale-95 transition-transform"
+                    onClick={closeMenu}
+                  >
+                    Sign Up
+                  </Link>
+                </div>
               </div>
 
               {/* Contact Info */}
