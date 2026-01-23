@@ -3,12 +3,8 @@ import { BRAND } from "@/lib/config";
 import { COUNTRY_PRICING } from "@/lib/pricing-data";
 import { Package, Clock, Shield, ArrowRight } from "lucide-react";
 
-export const metadata = {
-  title: `International Shipping Rates - ${BRAND.name}`,
-  description: "Competitive international courier rates to over 50 countries. Get instant quotes for shipping to USA, UK, Canada, Australia, Dubai, and more.",
-};
-
 export default function PricingPage() {
+
   return (
     <main className="pt-20">
       {/* Hero Section */}
@@ -89,53 +85,46 @@ export default function PricingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 md:gap-8">
             {COUNTRY_PRICING.map((country) => (
-              <Link
+              <div
                 key={country.slug}
-                href={`/pricing/${country.slug}`}
-                className="group bg-brand-gray border border-white/10 overflow-hidden hover:border-brand-gold/50 transition-all duration-300"
+                className="group bg-brand-gray border border-white/10 overflow-hidden hover:border-brand-gold/50 transition-all duration-300 flex flex-col"
               >
                 {/* Country Image */}
-                <div className="relative h-48 overflow-hidden">
+                <div className="relative h-64 overflow-hidden flex-shrink-0">
                   <img
                     src={country.image_url}
                     alt={`Courier to ${country.country}`}
                     className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
                   />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent"></div>
-                  <div className="absolute bottom-4 left-4 right-4">
-                    <h3 className="text-2xl font-serif text-white group-hover:text-brand-gold transition-colors">
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/50 to-transparent"></div>
+                  <div className="absolute bottom-6 left-6 right-6">
+                    <h3 className="text-3xl font-serif text-white group-hover:text-brand-gold transition-colors mb-2">
                       {country.country}
                     </h3>
-                  </div>
-                </div>
-
-                {/* Pricing Info */}
-                <div className="p-6">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-xs text-gray-400 uppercase tracking-wider">
-                      Starting From
-                    </span>
-                    <span className="text-xs text-brand-gold uppercase tracking-wider">
-                      {country.delivery_time}
-                    </span>
-                  </div>
-
-                  <div className="mb-4">
-                    <div className="text-3xl font-serif text-brand-gold">
-                      ₹{country.rates[country.rates.length - 1].price_per_kg.replace("/Kg", "")}
-                      <span className="text-sm text-gray-400">/Kg</span>
+                    <div className="flex items-center gap-2 text-brand-gold">
+                      <Clock size={16} />
+                      <span className="text-sm">{country.delivery_time}</span>
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">
-                      {country.rates[country.rates.length - 1].weight_slab}
-                    </p>
-                  </div>
-
-                  <div className="flex items-center justify-between text-brand-gold text-sm font-sans uppercase tracking-wider group-hover:translate-x-2 transition-transform">
-                    View Rates
-                    <ArrowRight size={16} />
                   </div>
                 </div>
-              </Link>
+
+                {/* Country Description */}
+                <div className="p-6 flex-1 flex flex-col">
+                  <p className="text-gray-300 text-sm leading-relaxed mb-6">
+                    {country.description}
+                  </p>
+
+                  <div className="mt-auto">
+                    <Link
+                      href={`/pricing/${country.slug}`}
+                      className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-brand-gold text-black text-sm font-sans uppercase tracking-wider hover:bg-white transition-colors"
+                    >
+                      View Details
+                      <ArrowRight size={16} />
+                    </Link>
+                  </div>
+                </div>
+              </div>
             ))}
           </div>
         </div>

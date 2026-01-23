@@ -10,8 +10,9 @@ export async function generateStaticParams() {
   }));
 }
 
-export async function generateMetadata({ params }: { params: { country: string } }) {
-  const countryData = getCountryBySlug(params.country);
+export async function generateMetadata({ params }: { params: Promise<{ country: string }> }) {
+  const { country } = await params;
+  const countryData = getCountryBySlug(country);
 
   if (!countryData) {
     return {
@@ -25,8 +26,9 @@ export async function generateMetadata({ params }: { params: { country: string }
   };
 }
 
-export default function CountryPricingPage({ params }: { params: { country: string } }) {
-  const countryData = getCountryBySlug(params.country);
+export default async function CountryPricingPage({ params }: { params: Promise<{ country: string }> }) {
+  const { country } = await params;
+  const countryData = getCountryBySlug(country);
 
   if (!countryData) {
     notFound();
@@ -34,7 +36,7 @@ export default function CountryPricingPage({ params }: { params: { country: stri
 
   // Get related countries (other destinations)
   const relatedCountries = COUNTRY_PRICING.filter(
-    (c) => c.slug !== params.country
+    (c) => c.slug !== country
   ).slice(0, 3);
 
   return (
