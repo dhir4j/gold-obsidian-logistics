@@ -2,10 +2,10 @@ export const BRAND = {
   name: "Waynex Logistics",
   short: "WX",
   tagline: "DELIVERING EXCELLENCE, EVERY MILE.",
-  location: "Global Operations / USA",
-  email: "contact@waynexlogistics.com",
-  phone: "+1-800-WAYNEX-1",
-  phoneDisplay: "+1 (800) 929-6391",
+  location: "Global Operations / India",
+  email: "info@waynexshipping.com",
+  phone: "+91-62832-79859",
+  phoneDisplay: "+91 62832 79859",
 };
 
 export const CTA = {

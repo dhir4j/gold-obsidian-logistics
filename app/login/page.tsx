@@ -3,9 +3,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { BRAND } from "@/lib/config";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, Briefcase } from "lucide-react";
 
 export default function LoginPage() {
+  const [activeTab, setActiveTab] = useState<"customer" | "employee">("customer");
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -24,16 +25,66 @@ export default function LoginPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
-    // Simulate login (replace with actual API call)
-    setTimeout(() => {
+    try {
+      // API call for authentication
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        alert(result.error || "Invalid credentials.");
+        setIsSubmitting(false);
+        return;
+      }
+
+      const user = result.user;
+
+      // Role validation based on active tab
+      if (activeTab === "employee") {
+        // Employee tab: only allow admin and employee accounts
+        if (user.isAdmin) {
+          // Admins redirect to admin panel
+          window.location.href = "https://admin.waynexshipping.com";
+          return;
+        } else if (user.isEmployee) {
+          // Employees go to employee dashboard
+          localStorage.setItem('session', JSON.stringify(user));
+          window.location.href = "/employee/dashboard";
+          return;
+        } else {
+          // Regular customer tried to login as employee
+          alert("This account is for customers only. Please use the Customer Login tab.");
+          setIsSubmitting(false);
+          return;
+        }
+      } else {
+        // Customer tab: only allow regular customers
+        if (user.isAdmin || user.isEmployee) {
+          alert("Employee and Admin accounts must use the Employee Login tab.");
+          setIsSubmitting(false);
+          return;
+        }
+
+        // Regular customer login
+        localStorage.setItem('session', JSON.stringify(user));
+        window.location.href = "/dashboard";
+      }
+    } catch (error) {
+      console.error("Login error:", error);
+      alert("Could not connect to the server. Please try again.");
       setIsSubmitting(false);
-      // Redirect to dashboard
-      window.location.href = "/dashboard";
-    }, 1500);
+    }
   };
 
   return (
@@ -41,7 +92,7 @@ export default function LoginPage() {
       <section className="py-16">
         <div className="max-w-md mx-auto px-6">
           {/* Header */}
-          <div className="text-center mb-12">
+          <div className="text-center mb-8">
             <h1 className="text-4xl md:text-6xl font-serif text-white mb-4">
               Welcome <span className="text-brand-gold italic">Back</span>
             </h1>
@@ -50,8 +101,57 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {/* Tabs */}
+          <div className="flex gap-2 mb-8">
+            <button
+              type="button"
+              onClick={() => setActiveTab("customer")}
+              className={`flex-1 px-6 py-3 font-sans text-sm tracking-wider transition-all duration-300 border ${
+                activeTab === "customer"
+                  ? "bg-brand-gold text-black border-brand-gold font-semibold"
+                  : "bg-transparent text-gray-400 border-white/20 hover:border-white/40"
+              }`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Mail size={18} />
+                Customer Login
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("employee")}
+              className={`flex-1 px-6 py-3 font-sans text-sm tracking-wider transition-all duration-300 border ${
+                activeTab === "employee"
+                  ? "bg-brand-gold text-black border-brand-gold font-semibold"
+                  : "bg-transparent text-gray-400 border-white/20 hover:border-white/40"
+              }`}
+            >
+              <span className="flex items-center justify-center gap-2">
+                <Briefcase size={18} />
+                Employee Login
+              </span>
+            </button>
+          </div>
+
           {/* Login Form */}
           <div className="bg-brand-gray p-8 md:p-12 border border-white/10 rounded">
+            {/* Employee Info Message */}
+            {activeTab === "employee" && (
+              <div className="mb-6 p-4 bg-brand-gold/10 border border-brand-gold/30 rounded">
+                <p className="text-sm text-gray-300 font-sans text-center">
+                  <span className="font-semibold text-brand-gold">Want to become a partner?</span>
+                  <br />
+                  Contact us at{" "}
+                  <a
+                    href="mailto:sales@waynexshipping.com"
+                    className="text-brand-gold hover:underline font-semibold"
+                  >
+                    sales@waynexshipping.com
+                  </a>
+                </p>
+              </div>
+            )}
+
             <form onSubmit={handleSubmit} className="space-y-6">
               {/* Email */}
               <div>
@@ -180,12 +280,28 @@ export default function LoginPage() {
 
             {/* Sign Up Link */}
             <div className="mt-8 pt-6 border-t border-white/10 text-center">
-              <p className="text-gray-400 font-sans text-sm">
-                Don't have an account?{" "}
-                <Link href="/signup" className="text-brand-gold hover:underline font-semibold">
-                  Create Account
-                </Link>
-              </p>
+              {activeTab === "customer" ? (
+                <p className="text-gray-400 font-sans text-sm">
+                  Don't have an account?{" "}
+                  <Link href="/signup" className="text-brand-gold hover:underline font-semibold">
+                    Create Account
+                  </Link>
+                </p>
+              ) : (
+                <p className="text-gray-400 font-sans text-sm">
+                  Employee accounts are created by administrators only.
+                  <br />
+                  <span className="text-xs mt-1 block">
+                    To become a partner, contact{" "}
+                    <a
+                      href="mailto:sales@waynexshipping.com"
+                      className="text-brand-gold hover:underline font-semibold"
+                    >
+                      sales@waynexshipping.com
+                    </a>
+                  </span>
+                </p>
+              )}
             </div>
           </div>
 

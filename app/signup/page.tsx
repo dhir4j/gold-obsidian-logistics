@@ -54,6 +54,23 @@ export default function SignUpPage() {
             </p>
           </div>
 
+          {/* Employee Notice */}
+          <div className="mb-6 p-4 bg-brand-gold/10 border border-brand-gold/30 rounded">
+            <p className="text-sm text-gray-300 font-sans text-center">
+              <span className="font-semibold text-brand-gold">Note:</span> Employee accounts are created by administrators only.
+              <br />
+              <span className="text-xs mt-1 block">
+                To become a partner, contact{" "}
+                <a
+                  href="mailto:sales@waynexshipping.com"
+                  className="text-brand-gold hover:underline font-semibold"
+                >
+                  sales@waynexshipping.com
+                </a>
+              </span>
+            </p>
+          </div>
+
           {/* Sign Up Form */}
           <div className="bg-brand-gray p-8 md:p-12 border border-white/10 rounded">
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -220,7 +237,7 @@ export default function SignUpPage() {
                     onChange={handleChange}
                     required
                     className="w-full pl-12 pr-4 py-3 bg-brand-dark border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors font-sans"
-                    placeholder="+1 (555) 123-4567"
+                    placeholder="+91 98765 43210"
                   />
                 </div>
               </div>

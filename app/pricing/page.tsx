@@ -28,49 +28,6 @@ export default function PricingPage() {
         </div>
       </section>
 
-      {/* Key Benefits */}
-      <section className="py-16 bg-brand-gray">
-        <div className="max-w-7xl mx-auto px-4 md:px-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold/10 rounded-full mb-4">
-                <Package className="text-brand-gold" size={32} />
-              </div>
-              <h3 className="text-xl font-serif text-white mb-2">
-                Volume Discounts
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Better rates for heavier shipments
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold/10 rounded-full mb-4">
-                <Clock className="text-brand-gold" size={32} />
-              </div>
-              <h3 className="text-xl font-serif text-white mb-2">
-                Fast Delivery
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Express options available
-              </p>
-            </div>
-
-            <div className="text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold/10 rounded-full mb-4">
-                <Shield className="text-brand-gold" size={32} />
-              </div>
-              <h3 className="text-xl font-serif text-white mb-2">
-                Fully Insured
-              </h3>
-              <p className="text-gray-400 text-sm">
-                Complete shipment protection
-              </p>
-            </div>
-          </div>
-        </div>
-      </section>
-
       {/* Country Pricing Grid */}
       <section className="py-24 bg-brand-dark">
         <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -126,6 +83,49 @@ export default function PricingPage() {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Key Benefits */}
+      <section className="py-16 bg-brand-gray">
+        <div className="max-w-7xl mx-auto px-4 md:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold/10 rounded-full mb-4">
+                <Package className="text-brand-gold" size={32} />
+              </div>
+              <h3 className="text-xl font-serif text-white mb-2">
+                Volume Discounts
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Better rates for heavier shipments
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold/10 rounded-full mb-4">
+                <Clock className="text-brand-gold" size={32} />
+              </div>
+              <h3 className="text-xl font-serif text-white mb-2">
+                Fast Delivery
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Express options available
+              </p>
+            </div>
+
+            <div className="text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-brand-gold/10 rounded-full mb-4">
+                <Shield className="text-brand-gold" size={32} />
+              </div>
+              <h3 className="text-xl font-serif text-white mb-2">
+                Fully Insured
+              </h3>
+              <p className="text-gray-400 text-sm">
+                Complete shipment protection
+              </p>
+            </div>
           </div>
         </div>
       </section>
