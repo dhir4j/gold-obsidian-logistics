@@ -40,7 +40,7 @@ export default function TrackingPage() {
     setTrackingData(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
       const response = await fetch(`${apiUrl}/api/shipments/${trackingId}`);
 
       if (response.ok) {

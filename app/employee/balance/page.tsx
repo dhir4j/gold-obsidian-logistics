@@ -37,7 +37,7 @@ export default function BalancePage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/employee/redeem-code`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/employee/redeem-code`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },

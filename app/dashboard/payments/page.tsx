@@ -27,7 +27,7 @@ export default function PaymentsPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/user/payments?email=${email}`
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/user/payments?email=${email}`
       );
       if (response.ok) {
         const data = await response.json();

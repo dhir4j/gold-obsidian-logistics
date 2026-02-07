@@ -28,7 +28,7 @@ export function useApi<T>(endpoint: string | null) {
           headers['X-User-Email'] = session.email;
         }
 
-        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+        const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'https://www.server.waynexshipping.com';
         const url = endpoint.startsWith('http') ? endpoint : `${apiUrl}${endpoint}`;
 
         const response = await fetch(url, { headers });

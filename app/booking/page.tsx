@@ -99,7 +99,7 @@ export default function BookingPage() {
     setPriceDetails(null);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
       let url = "";
       let body = {};
 
@@ -159,7 +159,7 @@ export default function BookingPage() {
     setIsSubmitting(true);
 
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000";
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
       const url =
         shipmentType === "domestic"
           ? `${apiUrl}/api/shipments/domestic`

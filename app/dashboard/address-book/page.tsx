@@ -34,7 +34,7 @@ export default function AddressBookPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/customer/addresses`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/customer/addresses`,
         {
           headers: {
             "X-User-Email": email,
@@ -58,7 +58,7 @@ export default function AddressBookPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/customer/addresses/${addressId}`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/customer/addresses/${addressId}`,
         {
           method: "DELETE",
           headers: {

@@ -33,7 +33,7 @@ export default function MyShipmentsPage() {
     setIsLoading(true);
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"}/api/shipments?email=${email}`
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/shipments?email=${email}`
       );
       if (response.ok) {
         const data = await response.json();
