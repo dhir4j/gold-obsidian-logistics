@@ -40,7 +40,7 @@ export default function SignUpPage() {
 
     try {
       const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/auth/register`,
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/auth/signup`,
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -48,10 +48,7 @@ export default function SignUpPage() {
             first_name: formData.firstName,
             last_name: formData.lastName,
             email: formData.email,
-            phone: formData.phone,
             password: formData.password,
-            company_name: formData.accountType === "business" ? formData.companyName : null,
-            account_type: formData.accountType,
           }),
         }
       );
