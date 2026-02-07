@@ -28,16 +28,48 @@ export default function SignUpPage() {
     });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (formData.password !== formData.confirmPassword) {
+      alert("Passwords do not match");
+      return;
+    }
+
     setIsSubmitting(true);
 
-    // Simulate signup (replace with actual API call)
-    setTimeout(() => {
+    try {
+      const response = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/auth/register`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            first_name: formData.firstName,
+            last_name: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            password: formData.password,
+            company_name: formData.accountType === "business" ? formData.companyName : null,
+            account_type: formData.accountType,
+          }),
+        }
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        alert("Account created successfully! Please login.");
+        window.location.href = "/login";
+      } else {
+        alert(data.error || "Failed to create account");
+      }
+    } catch (error) {
+      console.error("Signup error:", error);
+      alert("Failed to create account. Please try again.");
+    } finally {
       setIsSubmitting(false);
-      // Redirect to dashboard or login
-      window.location.href = "/dashboard";
-    }, 1500);
+    }
   };
 
   return (
