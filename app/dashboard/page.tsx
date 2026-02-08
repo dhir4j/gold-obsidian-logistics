@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Package, Truck, CheckCircle2, Clock, TrendingUp, PlusCircle } from "lucide-react";
 import Link from "next/link";
+import { useSession } from "@/hooks/use-session";
 
 interface Shipment {
   id: number;
@@ -15,20 +16,18 @@ interface Shipment {
 }
 
 export default function DashboardPage() {
+  const { session } = useSession();
   const [shipments, setShipments] = useState<Shipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState("");
 
   useEffect(() => {
-    // Get or set test user
-    let email = localStorage.getItem("userEmail");
-    if (!email) {
-      email = "test@waynex.com";
-      localStorage.setItem("userEmail", email);
+    const email = session?.email || localStorage.getItem("userEmail");
+    if (email) {
+      fetchShipments(email);
+    } else {
+      setIsLoading(false);
     }
-    setUserEmail(email);
-    fetchShipments(email);
-  }, []);
+  }, [session]);
 
   const fetchShipments = async (email: string) => {
     setIsLoading(true);
@@ -88,7 +87,7 @@ export default function DashboardPage() {
           </p>
         </div>
         <Link
-          href="/booking"
+          href="/dashboard/booking"
           className="mt-4 md:mt-0 inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-semibold rounded-lg hover:shadow-lg hover:shadow-[#C5A059]/20 transition-all duration-300"
         >
           <PlusCircle className="mr-2 h-5 w-5" />
@@ -236,7 +235,7 @@ export default function DashboardPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <Link
-                        href={`/tracking?id=${shipment.shipment_id_str}`}
+                        href={`/dashboard/tracking?id=${shipment.shipment_id_str}`}
                         className="inline-flex items-center px-4 py-2 border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 rounded-lg transition-all duration-200"
                       >
                         Track
@@ -254,7 +253,7 @@ export default function DashboardPage() {
                 Create your first shipment to get started
               </p>
               <Link
-                href="/booking"
+                href="/dashboard/booking"
                 className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-semibold rounded-lg hover:shadow-lg hover:shadow-[#C5A059]/20 transition-all duration-300"
               >
                 <PlusCircle className="mr-2 h-5 w-5" />
@@ -268,7 +267,7 @@ export default function DashboardPage() {
       {/* Quick Actions */}
       <div className="grid gap-6 md:grid-cols-3">
         <Link
-          href="/booking"
+          href="/dashboard/booking"
           className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-6 hover:border-[#C5A059]/40 transition-all duration-300"
         >
           <div className="flex items-start justify-between">
@@ -285,7 +284,7 @@ export default function DashboardPage() {
         </Link>
 
         <Link
-          href="/tracking"
+          href="/dashboard/tracking"
           className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-6 hover:border-[#C5A059]/40 transition-all duration-300"
         >
           <div className="flex items-start justify-between">

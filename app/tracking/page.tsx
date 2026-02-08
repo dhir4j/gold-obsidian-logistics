@@ -2,62 +2,75 @@
 
 import { useState } from "react";
 import { BRAND } from "@/lib/config";
-import { Search, Package, MapPin, Clock, CheckCircle } from "lucide-react";
+import { Search, Package, MapPin, Clock, CheckCircle, AlertCircle } from "lucide-react";
+
+interface TrackingEvent {
+  stage: string;
+  location: string;
+  date: string;
+  activity: string;
+  status?: string;
+  timestamp?: string;
+  description?: string;
+}
+
+interface TrackingData {
+  shipment_id_str: string;
+  status: string;
+  sender_name: string;
+  sender_address_city: string;
+  receiver_name: string;
+  receiver_address_city: string;
+  service_type: string;
+  booking_date: string;
+  tracking_history: TrackingEvent[];
+}
 
 export default function TrackingPage() {
   const [trackingId, setTrackingId] = useState("");
   const [isTracking, setIsTracking] = useState(false);
-  const [trackingData, setTrackingData] = useState<any>(null);
+  const [trackingData, setTrackingData] = useState<TrackingData | null>(null);
+  const [error, setError] = useState("");
 
-  const handleTrack = (e: React.FormEvent) => {
+  const handleTrack = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!trackingId.trim()) return;
 
-    // Simulate tracking (replace with actual API call)
     setIsTracking(true);
-    setTimeout(() => {
-      setTrackingData({
-        id: trackingId.toUpperCase(),
-        status: "In Transit",
-        origin: "Atlanta, GA",
-        destination: "New York, NY",
-        estimatedDelivery: "Jan 8, 2026",
-        currentLocation: "Charlotte, NC Distribution Center",
-        timeline: [
-          {
-            status: "Delivered",
-            location: "New York, NY",
-            time: "Jan 8, 2026 - 2:30 PM",
-            completed: false,
-          },
-          {
-            status: "Out for Delivery",
-            location: "New York, NY Hub",
-            time: "Jan 8, 2026 - 8:00 AM",
-            completed: false,
-          },
-          {
-            status: "In Transit",
-            location: "Charlotte, NC",
-            time: "Jan 7, 2026 - 3:45 PM",
-            completed: true,
-          },
-          {
-            status: "Departed Facility",
-            location: "Atlanta, GA Hub",
-            time: "Jan 6, 2026 - 10:20 AM",
-            completed: true,
-          },
-          {
-            status: "Picked Up",
-            location: "Atlanta, GA",
-            time: "Jan 5, 2026 - 4:15 PM",
-            completed: true,
-          },
-        ],
-      });
+    setError("");
+    setTrackingData(null);
+
+    try {
+      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
+      const response = await fetch(`${apiUrl}/api/shipments/${trackingId.trim()}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        setTrackingData(data);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        setError(errorData.error || "Shipment not found. Please check your tracking number and try again.");
+      }
+    } catch (err) {
+      console.error("Tracking error:", err);
+      setError("Failed to fetch tracking information. Please try again.");
+    } finally {
       setIsTracking(false);
-    }, 1500);
+    }
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Delivered":
+        return "bg-green-500/20 text-green-300 border-green-500/50";
+      case "In Transit":
+      case "Out for Delivery":
+        return "bg-blue-500/20 text-blue-300 border-blue-500/50";
+      case "Booked":
+        return "bg-brand-gold/20 text-brand-gold border-brand-gold/50";
+      default:
+        return "bg-gray-500/20 text-gray-300 border-gray-500/50";
+    }
   };
 
   return (
@@ -90,7 +103,7 @@ export default function TrackingPage() {
                 type="text"
                 value={trackingId}
                 onChange={(e) => setTrackingId(e.target.value.toUpperCase())}
-                placeholder="Enter Tracking Number (e.g., WX123456789)"
+                placeholder="Enter Tracking Number (e.g., WNX001234)"
                 className="flex-1 px-6 py-4 bg-brand-dark border border-white/10 text-white placeholder-gray-500 focus:outline-none focus:border-brand-gold transition-colors font-sans"
                 maxLength={20}
               />
@@ -111,6 +124,14 @@ export default function TrackingPage() {
             </div>
           </form>
 
+          {/* Error State */}
+          {error && (
+            <div className="mb-8 p-6 bg-red-500/10 border border-red-500/30 rounded-lg flex items-start gap-3">
+              <AlertCircle className="text-red-400 flex-shrink-0 mt-0.5" size={20} />
+              <p className="text-red-300 font-sans text-sm">{error}</p>
+            </div>
+          )}
+
           {/* Tracking Results */}
           {trackingData && (
             <div className="space-y-8 animate-fade-in">
@@ -122,11 +143,11 @@ export default function TrackingPage() {
                       Tracking Number
                     </p>
                     <p className="text-2xl font-serif text-white">
-                      {trackingData.id}
+                      {trackingData.shipment_id_str}
                     </p>
                   </div>
-                  <div className="px-4 py-2 bg-brand-gold/20 border border-brand-gold/50 rounded">
-                    <p className="text-brand-gold font-sans text-sm uppercase tracking-wider">
+                  <div className={`px-4 py-2 border rounded ${getStatusColor(trackingData.status)}`}>
+                    <p className="font-sans text-sm uppercase tracking-wider">
                       {trackingData.status}
                     </p>
                   </div>
@@ -137,10 +158,13 @@ export default function TrackingPage() {
                     <Package className="text-brand-gold flex-shrink-0 mt-1" size={20} />
                     <div>
                       <p className="text-gray-400 text-xs font-sans mb-1">
-                        Origin
+                        From
                       </p>
                       <p className="text-white font-sans text-sm">
-                        {trackingData.origin}
+                        {trackingData.sender_name}
+                      </p>
+                      <p className="text-gray-500 font-sans text-xs">
+                        {trackingData.sender_address_city}
                       </p>
                     </div>
                   </div>
@@ -149,10 +173,13 @@ export default function TrackingPage() {
                     <MapPin className="text-brand-gold flex-shrink-0 mt-1" size={20} />
                     <div>
                       <p className="text-gray-400 text-xs font-sans mb-1">
-                        Destination
+                        To
                       </p>
                       <p className="text-white font-sans text-sm">
-                        {trackingData.destination}
+                        {trackingData.receiver_name}
+                      </p>
+                      <p className="text-gray-500 font-sans text-xs">
+                        {trackingData.receiver_address_city}
                       </p>
                     </div>
                   </div>
@@ -161,22 +188,20 @@ export default function TrackingPage() {
                     <Clock className="text-brand-gold flex-shrink-0 mt-1" size={20} />
                     <div>
                       <p className="text-gray-400 text-xs font-sans mb-1">
-                        Est. Delivery
+                        Booking Date
                       </p>
                       <p className="text-white font-sans text-sm">
-                        {trackingData.estimatedDelivery}
+                        {new Date(trackingData.booking_date).toLocaleDateString("en-IN", {
+                          year: "numeric",
+                          month: "long",
+                          day: "numeric",
+                        })}
+                      </p>
+                      <p className="text-gray-500 font-sans text-xs">
+                        {trackingData.service_type}
                       </p>
                     </div>
                   </div>
-                </div>
-
-                <div className="mt-6 p-4 bg-white/5 border border-white/10 rounded">
-                  <p className="text-gray-400 text-xs font-sans mb-1">
-                    Current Location
-                  </p>
-                  <p className="text-white font-sans font-medium">
-                    {trackingData.currentLocation}
-                  </p>
                 </div>
               </div>
 
@@ -186,65 +211,55 @@ export default function TrackingPage() {
                   Shipment Timeline
                 </h3>
 
-                <div className="space-y-6">
-                  {trackingData.timeline.map(
-                    (event: any, index: number) => (
-                      <div key={index} className="flex gap-6">
-                        <div className="flex flex-col items-center">
-                          <div
-                            className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                              event.completed
-                                ? "bg-brand-gold"
-                                : "bg-white/10 border border-white/20"
-                            }`}
-                          >
-                            {event.completed ? (
-                              <CheckCircle
-                                className="text-black"
-                                size={20}
-                              />
-                            ) : (
-                              <div className="w-3 h-3 rounded-full bg-white/40"></div>
+                {trackingData.tracking_history && trackingData.tracking_history.length > 0 ? (
+                  <div className="space-y-6">
+                    {trackingData.tracking_history.map(
+                      (event, index) => (
+                        <div key={index} className="flex gap-6">
+                          <div className="flex flex-col items-center">
+                            <div className="w-10 h-10 rounded-full flex items-center justify-center bg-brand-gold">
+                              <CheckCircle className="text-black" size={20} />
+                            </div>
+                            {index < trackingData.tracking_history.length - 1 && (
+                              <div className="w-0.5 h-12 bg-brand-gold"></div>
                             )}
                           </div>
-                          {index < trackingData.timeline.length - 1 && (
-                            <div
-                              className={`w-0.5 h-12 ${
-                                event.completed
-                                  ? "bg-brand-gold"
-                                  : "bg-white/10"
-                              }`}
-                            ></div>
-                          )}
-                        </div>
 
-                        <div className="flex-1 pb-6">
-                          <p
-                            className={`font-sans font-semibold mb-1 ${
-                              event.completed
-                                ? "text-white"
-                                : "text-gray-400"
-                            }`}
-                          >
-                            {event.status}
-                          </p>
-                          <p className="text-gray-400 font-sans text-sm mb-1">
-                            {event.location}
-                          </p>
-                          <p className="text-gray-500 font-sans text-xs">
-                            {event.time}
-                          </p>
+                          <div className="flex-1 pb-6">
+                            <p className="font-sans font-semibold mb-1 text-white">
+                              {event.stage || event.status}
+                            </p>
+                            <p className="text-gray-400 font-sans text-sm mb-1">
+                              {event.activity || event.description}
+                            </p>
+                            {event.location && (
+                              <p className="text-gray-400 font-sans text-sm mb-1">
+                                {event.location}
+                              </p>
+                            )}
+                            <p className="text-gray-500 font-sans text-xs">
+                              {new Date(event.date || event.timestamp || "").toLocaleString("en-IN", {
+                                dateStyle: "medium",
+                                timeStyle: "short",
+                              })}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    )
-                  )}
-                </div>
+                      )
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <Clock className="h-12 w-12 text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 font-sans text-sm">No tracking history available yet</p>
+                  </div>
+                )}
               </div>
             </div>
           )}
 
           {/* Help Section */}
-          {!trackingData && (
+          {!trackingData && !error && (
             <div className="mt-12 text-center">
               <p className="text-gray-400 font-sans text-sm mb-4">
                 Need help finding your tracking number?

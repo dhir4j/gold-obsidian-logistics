@@ -32,6 +32,9 @@ export default function Footer() {
             }`}>
               {COMPANY_INFO.tagline}
             </p>
+            <p className={`text-gray-400 font-medium ${isMobile ? "text-[10px]" : "text-xs"}`}>
+              Waynex Travels &amp; Logistics Opc Pvt Ltd
+            </p>
             <p className={`text-gray-500 ${isMobile ? "text-[10px]" : "text-xs"}`}>
               GST: {COMPANY_INFO.gst}
             </p>

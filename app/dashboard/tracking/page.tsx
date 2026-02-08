@@ -4,10 +4,14 @@ import { useState } from "react";
 import { Search, Package, MapPin, CheckCircle2, Clock, Truck } from "lucide-react";
 
 interface TrackingEvent {
-  status: string;
+  stage: string;
   location: string;
-  timestamp: string;
-  description: string;
+  date: string;
+  activity: string;
+  // Allow alternate field names for compatibility
+  status?: string;
+  timestamp?: string;
+  description?: string;
 }
 
 interface ShipmentTracking {
@@ -204,15 +208,15 @@ export default function TrackingPage() {
 
                       <div className="rounded-lg bg-[#121212]/50 p-4 hover:bg-[#121212]/70 transition-colors">
                         <div className="flex justify-between items-start mb-2">
-                          <h3 className="font-semibold text-[#F5F5F0]">{event.status}</h3>
+                          <h3 className="font-semibold text-[#F5F5F0]">{event.stage || event.status}</h3>
                           <span className="text-sm text-[#F5F5F0]/60">
-                            {new Date(event.timestamp).toLocaleString("en-IN", {
+                            {new Date(event.date || event.timestamp || "").toLocaleString("en-IN", {
                               dateStyle: "medium",
                               timeStyle: "short",
                             })}
                           </span>
                         </div>
-                        <p className="text-sm text-[#F5F5F0]/70 mb-1">{event.description}</p>
+                        <p className="text-sm text-[#F5F5F0]/70 mb-1">{event.activity || event.description}</p>
                         {event.location && (
                           <p className="text-sm text-[#C5A059] flex items-center">
                             <MapPin className="h-3 w-3 mr-1" />

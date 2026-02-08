@@ -60,6 +60,7 @@ export default function LoginPage() {
         } else if (user.isEmployee) {
           // Employees go to employee dashboard
           localStorage.setItem('session', JSON.stringify(user));
+          localStorage.setItem('userEmail', user.email);
           window.location.href = "/employee/dashboard";
           return;
         } else {
@@ -78,6 +79,7 @@ export default function LoginPage() {
 
         // Regular customer login
         localStorage.setItem('session', JSON.stringify(user));
+        localStorage.setItem('userEmail', user.email);
         window.location.href = "/dashboard";
       }
     } catch (error) {

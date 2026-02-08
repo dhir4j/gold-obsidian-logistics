@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { User, Mail, Phone, MapPin, Lock, Save, Edit2 } from "lucide-react";
 import { useRouter } from "next/navigation";
+import { useSession } from "@/hooks/use-session";
 
 interface UserProfile {
   firstName: string;
@@ -18,18 +19,18 @@ interface UserProfile {
 
 export default function ProfilePage() {
   const router = useRouter();
-  const [userEmail, setUserEmail] = useState("");
+  const { session } = useSession();
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [profile, setProfile] = useState<UserProfile>({
-    firstName: "Test",
-    lastName: "User",
-    email: "test@waynex.com",
-    phone: "+91 9876543210",
-    addressStreet: "123 Main Street",
-    addressCity: "Mumbai",
-    addressState: "Maharashtra",
-    addressPincode: "400001",
+    firstName: "",
+    lastName: "",
+    email: "",
+    phone: "",
+    addressStreet: "",
+    addressCity: "",
+    addressState: "",
+    addressPincode: "",
     addressCountry: "India",
   });
 
@@ -40,15 +41,16 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const email = localStorage.getItem("userEmail");
-    if (!email) {
-      router.push("/login");
-      return;
+    if (session) {
+      setProfile((prev) => ({
+        ...prev,
+        firstName: session.firstName || "",
+        lastName: session.lastName || "",
+        email: session.email || "",
+        phone: session.phone || "",
+      }));
     }
-    setUserEmail(email);
-    // In production, fetch user profile from API
-    // fetchUserProfile(email);
-  }, [router]);
+  }, [session]);
 
   const handleInputChange = (field: keyof UserProfile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));

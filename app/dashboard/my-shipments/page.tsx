@@ -144,7 +144,7 @@ export default function MyShipmentsPage() {
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                     <Link
-                      href={`/tracking?id=${shipment.shipment_id_str}`}
+                      href={`/dashboard/tracking?id=${shipment.shipment_id_str}`}
                       className="inline-flex items-center px-4 py-2 border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 rounded-lg transition-all duration-200"
                     >
                       <Search className="mr-2 h-4 w-4" />

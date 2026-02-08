@@ -16,8 +16,10 @@ import {
   Bell,
   Moon,
   Sun,
-  MapPin
+  MapPin,
+  PlusCircle
 } from "lucide-react";
+import { useSession } from "@/hooks/use-session";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -26,22 +28,9 @@ interface DashboardLayoutProps {
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const router = useRouter();
+  const { session, clearSession } = useSession();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
-  const [userEmail, setUserEmail] = useState("");
-
-  useEffect(() => {
-    // For testing: Auto-login with test credentials if not logged in
-    const email = localStorage.getItem("userEmail");
-    if (!email) {
-      // Set test user
-      const testEmail = "test@waynex.com";
-      localStorage.setItem("userEmail", testEmail);
-      setUserEmail(testEmail);
-    } else {
-      setUserEmail(email);
-    }
-  }, []);
 
   const navigation = [
     { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
@@ -50,9 +39,11 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
     { name: "Payments", href: "/dashboard/payments", icon: CreditCard },
     { name: "Address Book", href: "/dashboard/address-book", icon: BookUser },
     { name: "Documents", href: "/dashboard/documents", icon: FileText },
+    { name: "New Booking", href: "/dashboard/booking", icon: PlusCircle },
   ];
 
   const handleLogout = () => {
+    clearSession();
     localStorage.removeItem("userEmail");
     localStorage.removeItem("userToken");
     router.push("/");
@@ -123,9 +114,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </div>
             <div className="flex-1 overflow-hidden">
               <p className="truncate text-sm font-medium text-[#F5F5F0]">
-                Test User
+                {session ? `${session.firstName} ${session.lastName}` : "User"}
               </p>
-              <p className="truncate text-xs text-[#F5F5F0]/50">{userEmail}</p>
+              <p className="truncate text-xs text-[#F5F5F0]/50">{session?.email || ""}</p>
             </div>
             <button
               onClick={handleLogout}
