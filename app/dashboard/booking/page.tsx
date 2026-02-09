@@ -379,8 +379,9 @@ export default function DashboardBookingPage() {
                 <label className={labelClass}>Service Type *</label>
                 <select required value={serviceType} onChange={(e) => { setServiceType(e.target.value); setPriceDetails(null); }} className={inputClass}>
                   <option value="">Select service</option>
-                  <option value="Surface">Surface</option>
-                  <option value="Express">Express</option>
+                  <option value="Express">Express (up to 5 kg)</option>
+                  <option value="Surface">Surface Cargo</option>
+                  <option value="Air">Air Cargo</option>
                 </select>
               </div>
             )}

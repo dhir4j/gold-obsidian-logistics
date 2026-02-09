@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { User, Mail, Phone, MapPin, Lock, Save, Edit2 } from "lucide-react";
+import { User, Mail, Phone, MapPin, Save, Edit2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/use-session";
 
@@ -34,12 +34,6 @@ export default function ProfilePage() {
     addressCountry: "India",
   });
 
-  const [passwordData, setPasswordData] = useState({
-    currentPassword: "",
-    newPassword: "",
-    confirmPassword: "",
-  });
-
   useEffect(() => {
     if (session) {
       setProfile((prev) => ({
@@ -54,10 +48,6 @@ export default function ProfilePage() {
 
   const handleInputChange = (field: keyof UserProfile, value: string) => {
     setProfile((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const handlePasswordChange = (field: keyof typeof passwordData, value: string) => {
-    setPasswordData((prev) => ({ ...prev, [field]: value }));
   };
 
   const handleSaveProfile = async () => {
@@ -78,43 +68,6 @@ export default function ProfilePage() {
     } catch (error) {
       console.error("Failed to update profile:", error);
       alert("Failed to update profile. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleChangePassword = async () => {
-    if (passwordData.newPassword !== passwordData.confirmPassword) {
-      alert("New passwords do not match!");
-      return;
-    }
-
-    if (passwordData.newPassword.length < 8) {
-      alert("Password must be at least 8 characters long!");
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      // In production, send to API
-      // await fetch(`${API_URL}/api/user/change-password`, {
-      //   method: "POST",
-      //   headers: { "Content-Type": "application/json" },
-      //   body: JSON.stringify({
-      //     email: userEmail,
-      //     currentPassword: passwordData.currentPassword,
-      //     newPassword: passwordData.newPassword,
-      //   }),
-      // });
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
-
-      setPasswordData({ currentPassword: "", newPassword: "", confirmPassword: "" });
-      alert("Password changed successfully!");
-    } catch (error) {
-      console.error("Failed to change password:", error);
-      alert("Failed to change password. Please try again.");
     } finally {
       setIsSaving(false);
     }
@@ -318,74 +271,6 @@ export default function ProfilePage() {
         </div>
       </div>
 
-      {/* Change Password */}
-      <div className="rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-8">
-        <h2 className="font-serif text-2xl font-semibold text-[#F5F5F0] mb-6">
-          Change Password
-        </h2>
-
-        <div className="grid gap-6 md:grid-cols-1 max-w-2xl">
-          {/* Current Password */}
-          <div>
-            <label className="block text-sm font-medium text-[#F5F5F0]/60 mb-2">
-              Current Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-              <input
-                type="password"
-                value={passwordData.currentPassword}
-                onChange={(e) => handlePasswordChange("currentPassword", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-[#121212] border border-[#C5A059]/20 rounded-lg text-[#F5F5F0] focus:outline-none focus:border-[#C5A059] transition-colors"
-                placeholder="Enter current password"
-              />
-            </div>
-          </div>
-
-          {/* New Password */}
-          <div>
-            <label className="block text-sm font-medium text-[#F5F5F0]/60 mb-2">
-              New Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-              <input
-                type="password"
-                value={passwordData.newPassword}
-                onChange={(e) => handlePasswordChange("newPassword", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-[#121212] border border-[#C5A059]/20 rounded-lg text-[#F5F5F0] focus:outline-none focus:border-[#C5A059] transition-colors"
-                placeholder="Enter new password (min 8 characters)"
-              />
-            </div>
-          </div>
-
-          {/* Confirm Password */}
-          <div>
-            <label className="block text-sm font-medium text-[#F5F5F0]/60 mb-2">
-              Confirm New Password
-            </label>
-            <div className="relative">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-              <input
-                type="password"
-                value={passwordData.confirmPassword}
-                onChange={(e) => handlePasswordChange("confirmPassword", e.target.value)}
-                className="w-full pl-10 pr-4 py-3 bg-[#121212] border border-[#C5A059]/20 rounded-lg text-[#F5F5F0] focus:outline-none focus:border-[#C5A059] transition-colors"
-                placeholder="Confirm new password"
-              />
-            </div>
-          </div>
-
-          <button
-            onClick={handleChangePassword}
-            disabled={isSaving || !passwordData.currentPassword || !passwordData.newPassword || !passwordData.confirmPassword}
-            className="inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-semibold rounded-lg hover:shadow-lg hover:shadow-[#C5A059]/20 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Lock className="mr-2 h-5 w-5" />
-            {isSaving ? "Updating..." : "Update Password"}
-          </button>
-        </div>
-      </div>
     </div>
   );
 }

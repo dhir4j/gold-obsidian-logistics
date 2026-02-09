@@ -517,8 +517,9 @@ export default function BookingPage() {
                     className="w-full px-4 py-3 bg-[#121212] border border-[#C5A059]/20 rounded-lg text-[#F5F5F0] focus:outline-none focus:border-[#C5A059] transition-colors"
                   >
                     <option value="">Select service</option>
-                    <option value="Surface">Surface</option>
-                    <option value="Express">Express</option>
+                    <option value="Express">Express (up to 5 kg)</option>
+                    <option value="Surface">Surface Cargo</option>
+                    <option value="Air">Air Cargo</option>
                   </select>
                 </div>
               )}
