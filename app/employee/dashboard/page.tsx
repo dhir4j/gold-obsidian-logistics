@@ -2,7 +2,7 @@
 
 import { useSession } from "@/hooks/use-session";
 import { useApi } from "@/hooks/use-api";
-import { DollarSign, Package, TrendingUp, Plus } from "lucide-react";
+import { DollarSign, Package, TrendingUp, PlusCircle, Truck, CheckCircle2, Clock } from "lucide-react";
 import Link from "next/link";
 
 interface EmployeeStats {
@@ -13,7 +13,9 @@ interface EmployeeStats {
     id: number;
     shipment_id_str: string;
     receiver_name: string;
+    receiver_address_city: string;
     status: string;
+    booking_date: string;
     created_at: string;
   }[];
 }
@@ -24,166 +26,190 @@ export default function EmployeeDashboard() {
     session ? `/api/employee/day-end-stats` : null
   );
 
-  const statCards = [
-    {
-      title: "Current Balance",
-      value: stats?.current_balance,
-      icon: DollarSign,
-      isCurrency: true,
-      color: "brand-gold",
-    },
-    {
-      title: "Total Shipments",
-      value: stats?.total_shipments_count,
-      icon: Package,
-      color: "blue-500",
-    },
-    {
-      title: "Total Volume",
-      value: stats?.total_shipments_value,
-      icon: TrendingUp,
-      isCurrency: true,
-      color: "green-500",
-    },
-  ];
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Delivered":
+        return "bg-green-500/20 text-green-300 border-green-500/30";
+      case "In Transit":
+      case "Out for Delivery":
+        return "bg-blue-500/20 text-blue-300 border-blue-500/30";
+      case "Booked":
+        return "bg-[#C5A059]/20 text-[#C5A059] border-[#C5A059]/30";
+      default:
+        return "bg-gray-500/20 text-gray-300 border-gray-500/30";
+    }
+  };
 
   return (
-    <div className="p-6 md:p-8">
-      {/* Page Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-serif text-white mb-2">
-          Employee Dashboard
-        </h1>
-        <p className="text-gray-400 font-sans">
-          Overview of your account and recent activity
-        </p>
-      </div>
-
-      {/* Quick Action */}
-      <div className="mb-8">
+    <div className="space-y-8">
+      {/* Welcome Section */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
+        <div>
+          <h1 className="font-serif text-3xl font-bold text-[#F5F5F0] mb-2">
+            Dashboard
+          </h1>
+          <p className="text-[#F5F5F0]/60">
+            Welcome back, {session?.firstName || "Employee"}! Here&apos;s your activity overview.
+          </p>
+        </div>
         <Link
           href="/employee/shipments/new"
-          className="inline-flex items-center gap-2 px-6 py-3 bg-brand-gold text-black hover:bg-white transition-all duration-300 font-sans text-sm tracking-wider uppercase font-semibold"
+          className="mt-4 md:mt-0 inline-flex items-center justify-center px-6 py-3 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-semibold rounded-lg hover:shadow-lg hover:shadow-[#C5A059]/20 transition-all duration-300"
         >
-          <Plus size={18} />
-          Create New Shipment
+          <PlusCircle className="mr-2 h-5 w-5" />
+          New Shipment
         </Link>
       </div>
 
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {statCards.map((card, index) => (
-          <div
-            key={index}
-            className="bg-brand-gray p-6 border border-white/10 rounded"
-          >
+      {/* Stats Cards */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-6 hover:border-[#C5A059]/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-[#C5A059]/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
+          <div className="relative">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-sans text-gray-400 uppercase tracking-wider">
-                {card.title}
-              </h3>
-              <card.icon className={`text-${card.color}`} size={24} />
+              <p className="text-sm font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Current Balance</p>
+              <DollarSign className="h-8 w-8 text-[#C5A059]/30" />
             </div>
-            <div className="text-3xl font-serif text-white">
-              {isLoading ? (
-                <div className="h-9 w-24 bg-white/10 animate-pulse rounded"></div>
-              ) : error ? (
-                <span className="text-red-500 text-sm">Error</span>
-              ) : card.isCurrency ? (
-                `₹${Number(card.value ?? 0).toFixed(2)}`
-              ) : (
-                card.value ?? 0
-              )}
-            </div>
+            <p className="text-4xl font-bold text-[#F5F5F0] font-serif">
+              {isLoading ? "..." : error ? "—" : `₹${Number(stats?.current_balance ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+            </p>
           </div>
-        ))}
+        </div>
+
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-blue-500/20 p-6 hover:border-blue-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Total Shipments</p>
+              <Package className="h-8 w-8 text-blue-400/30" />
+            </div>
+            <p className="text-4xl font-bold text-[#F5F5F0] font-serif">
+              {isLoading ? "..." : error ? "—" : stats?.total_shipments_count ?? 0}
+            </p>
+          </div>
+        </div>
+
+        <div className="relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-green-500/20 p-6 hover:border-green-500/40 transition-all duration-300 group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-green-500/5 rounded-full -mr-16 -mt-16 group-hover:scale-150 transition-transform duration-500" />
+          <div className="relative">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Total Volume</p>
+              <TrendingUp className="h-8 w-8 text-green-400/30" />
+            </div>
+            <p className="text-4xl font-bold text-[#F5F5F0] font-serif">
+              {isLoading ? "..." : error ? "—" : `₹${Number(stats?.total_shipments_value ?? 0).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`}
+            </p>
+          </div>
+        </div>
       </div>
 
       {/* Recent Shipments */}
-      <div className="bg-brand-gray border border-white/10 rounded">
-        <div className="p-6 border-b border-white/10">
-          <h2 className="text-xl font-serif text-white">Recent Activity</h2>
-          <p className="text-sm text-gray-400 font-sans mt-1">
-            Your latest shipments
-          </p>
+      <div className="rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 overflow-hidden">
+        <div className="border-b border-[#C5A059]/20 p-6">
+          <h2 className="font-serif text-2xl font-semibold text-[#F5F5F0]">Recent Shipments</h2>
+          <p className="text-sm text-[#F5F5F0]/60 mt-1">Your latest shipment activity</p>
         </div>
-        <div className="p-6">
+
+        <div className="overflow-x-auto">
           {isLoading ? (
-            <div className="space-y-3">
-              {[...Array(3)].map((_, i) => (
-                <div
-                  key={i}
-                  className="h-16 bg-white/5 animate-pulse rounded"
-                ></div>
-              ))}
+            <div className="flex items-center justify-center h-64">
+              <div className="flex flex-col items-center space-y-4">
+                <div className="w-12 h-12 border-4 border-[#C5A059]/30 border-t-[#C5A059] rounded-full animate-spin" />
+                <p className="text-[#F5F5F0]/60">Loading shipments...</p>
+              </div>
             </div>
-          ) : error ? (
-            <p className="text-center text-red-500 py-8">
-              Could not load recent activity.
-            </p>
           ) : stats && stats.all_shipments.length > 0 ? (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-3 px-4 text-xs font-sans text-gray-400 uppercase tracking-wider">
-                      Tracking ID
-                    </th>
-                    <th className="text-left py-3 px-4 text-xs font-sans text-gray-400 uppercase tracking-wider">
-                      Receiver
-                    </th>
-                    <th className="text-left py-3 px-4 text-xs font-sans text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="text-right py-3 px-4 text-xs font-sans text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
+            <table className="w-full">
+              <thead className="bg-[#2A2A2A]/50">
+                <tr>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Tracking ID</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Receiver</th>
+                  <th className="px-6 py-4 text-left text-xs font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Status</th>
+                  <th className="px-6 py-4 text-right text-xs font-medium text-[#F5F5F0]/60 uppercase tracking-wider">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-[#C5A059]/10">
+                {stats.all_shipments.slice(0, 10).map((shipment) => (
+                  <tr key={shipment.id} className="hover:bg-[#2A2A2A]/30 transition-colors">
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className="font-mono text-sm font-medium text-[#C5A059]">{shipment.shipment_id_str}</span>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-[#F5F5F0]">{shipment.receiver_name}</div>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusColor(shipment.status)}`}>
+                        {shipment.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                      <Link
+                        href={`/employee/tracking?id=${shipment.shipment_id_str}`}
+                        className="inline-flex items-center px-4 py-2 border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 rounded-lg transition-all duration-200"
+                      >
+                        Track
+                      </Link>
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {stats.all_shipments.slice(0, 10).map((shipment) => (
-                    <tr
-                      key={shipment.id}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors"
-                    >
-                      <td className="py-4 px-4 font-mono text-sm text-white">
-                        {shipment.shipment_id_str}
-                      </td>
-                      <td className="py-4 px-4 text-sm text-gray-300 font-sans">
-                        {shipment.receiver_name}
-                      </td>
-                      <td className="py-4 px-4">
-                        <span className="inline-block px-3 py-1 text-xs font-sans bg-brand-gold/20 text-brand-gold border border-brand-gold/30 rounded-full">
-                          {shipment.status}
-                        </span>
-                      </td>
-                      <td className="py-4 px-4 text-right">
-                        <Link
-                          href={`/tracking?id=${shipment.shipment_id_str}`}
-                          className="text-brand-gold hover:underline text-sm font-sans"
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                ))}
+              </tbody>
+            </table>
           ) : (
-            <div className="text-center py-12">
-              <Package className="mx-auto text-gray-600 mb-4" size={48} />
-              <p className="text-gray-400 font-sans">
-                No shipments created yet.
-              </p>
+            <div className="flex flex-col items-center justify-center h-64 text-center">
+              <Package className="h-16 w-16 text-[#F5F5F0]/20 mb-4" />
+              <p className="text-[#F5F5F0]/60 mb-2">No shipments yet</p>
               <Link
                 href="/employee/shipments/new"
-                className="inline-block mt-4 text-brand-gold hover:underline font-sans text-sm"
+                className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-semibold rounded-lg hover:shadow-lg hover:shadow-[#C5A059]/20 transition-all duration-300"
               >
-                Create your first shipment
+                <PlusCircle className="mr-2 h-5 w-5" />
+                Create Shipment
               </Link>
             </div>
           )}
         </div>
+      </div>
+
+      {/* Quick Actions */}
+      <div className="grid gap-6 md:grid-cols-3">
+        <Link
+          href="/employee/shipments/new"
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-6 hover:border-[#C5A059]/40 transition-all duration-300"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-[#F5F5F0] mb-2">New Booking</h3>
+              <p className="text-sm text-[#F5F5F0]/60">Create a new shipment</p>
+            </div>
+            <PlusCircle className="h-8 w-8 text-[#C5A059]/50 group-hover:text-[#C5A059] transition-colors" />
+          </div>
+        </Link>
+
+        <Link
+          href="/employee/tracking"
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-6 hover:border-[#C5A059]/40 transition-all duration-300"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-[#F5F5F0] mb-2">Track Shipment</h3>
+              <p className="text-sm text-[#F5F5F0]/60">Track your package in real-time</p>
+            </div>
+            <Truck className="h-8 w-8 text-[#C5A059]/50 group-hover:text-[#C5A059] transition-colors" />
+          </div>
+        </Link>
+
+        <Link
+          href="/employee/balance"
+          className="group relative overflow-hidden rounded-xl bg-gradient-to-br from-[#1a1a1a] to-[#2A2A2A] border border-[#C5A059]/20 p-6 hover:border-[#C5A059]/40 transition-all duration-300"
+        >
+          <div className="flex items-start justify-between">
+            <div>
+              <h3 className="text-lg font-semibold text-[#F5F5F0] mb-2">Balance & Top-up</h3>
+              <p className="text-sm text-[#F5F5F0]/60">Manage your account balance</p>
+            </div>
+            <DollarSign className="h-8 w-8 text-[#C5A059]/50 group-hover:text-[#C5A059] transition-colors" />
+          </div>
+        </Link>
       </div>
     </div>
   );

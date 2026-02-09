@@ -15,14 +15,16 @@ export default function RootLayout({
 }>) {
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith('/dashboard');
+  const isEmployee = pathname?.startsWith('/employee');
+  const hideChrome = isDashboard || isEmployee;
 
   return (
     <html lang="en">
       <body className="antialiased">
         <Loader />
-        {!isDashboard && <Navbar />}
+        {!hideChrome && <Navbar />}
         {children}
-        {!isDashboard && <Footer />}
+        {!hideChrome && <Footer />}
       </body>
     </html>
   );

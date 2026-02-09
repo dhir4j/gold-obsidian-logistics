@@ -125,7 +125,7 @@ export default function MyShipmentsPage() {
                       </td>
                       <td className="py-4 px-4 text-right">
                         <Link
-                          href={`/tracking?id=${shipment.shipment_id_str}`}
+                          href={`/employee/tracking?id=${shipment.shipment_id_str}`}
                           className="text-brand-gold hover:underline text-sm font-sans"
                         >
                           Track
