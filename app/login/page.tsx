@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { BRAND } from "@/lib/config";
 import { Mail, Lock, ArrowRight, Briefcase } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
 
 export default function LoginPage() {
   const [activeTab, setActiveTab] = useState<"customer" | "employee">("customer");
@@ -14,6 +16,22 @@ export default function LoginPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // OTP state
+  const [step, setStep] = useState<"credentials" | "otp" | "unverified">("credentials");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement>
@@ -30,10 +48,9 @@ export default function LoginPage() {
     setIsSubmitting(true);
 
     try {
-      // API call for authentication
-      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL || 'https://www.server.waynexshipping.com'}/api/auth/login`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch(`${API_URL}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           email: formData.email,
           password: formData.password,
@@ -42,52 +59,253 @@ export default function LoginPage() {
 
       const result = await response.json();
 
+      if (response.status === 403 && result.requiresVerification) {
+        // Email not verified — show OTP for signup verification
+        setOtpEmail(result.email);
+        setStep("unverified");
+        setResendCooldown(60);
+        setIsSubmitting(false);
+        return;
+      }
+
       if (!response.ok) {
         alert(result.error || "Invalid credentials.");
         setIsSubmitting(false);
         return;
       }
 
-      const user = result.user;
-
-      // Role validation based on active tab
-      if (activeTab === "employee") {
-        // Employee tab: only allow admin and employee accounts
-        if (user.isAdmin) {
-          // Admins redirect to admin panel
-          window.location.href = "https://admin.waynexshipping.com";
-          return;
-        } else if (user.isEmployee) {
-          // Employees go to employee dashboard
-          localStorage.setItem('session', JSON.stringify(user));
-          localStorage.setItem('userEmail', user.email);
-          window.location.href = "/employee/dashboard";
-          return;
-        } else {
-          // Regular customer tried to login as employee
-          alert("This account is for customers only. Please use the Customer Login tab.");
-          setIsSubmitting(false);
-          return;
-        }
-      } else {
-        // Customer tab: only allow regular customers
-        if (user.isAdmin || user.isEmployee) {
-          alert("Employee and Admin accounts must use the Employee Login tab.");
-          setIsSubmitting(false);
-          return;
-        }
-
-        // Regular customer login
-        localStorage.setItem('session', JSON.stringify(user));
-        localStorage.setItem('userEmail', user.email);
-        window.location.href = "/dashboard";
+      if (result.requiresOtp) {
+        // Show OTP input for login verification
+        setOtpEmail(result.email);
+        setStep("otp");
+        setResendCooldown(60);
+        setIsSubmitting(false);
+        return;
       }
+
+      // Direct login (shouldn't happen with OTP enabled, but fallback)
+      handleLoginSuccess(result.user, result.rememberToken);
     } catch (error) {
       console.error("Login error:", error);
       alert("Could not connect to the server. Please try again.");
       setIsSubmitting(false);
     }
   };
+
+  const handleLoginSuccess = (user: any, rememberToken?: string) => {
+    localStorage.setItem("session", JSON.stringify(user));
+    localStorage.setItem("userEmail", user.email);
+
+    if (rememberToken) {
+      localStorage.setItem("rememberToken", rememberToken);
+    }
+
+    // Role-based redirect
+    if (activeTab === "employee") {
+      if (user.isAdmin) {
+        window.location.href = "https://admin.waynexshipping.com";
+        return;
+      } else if (user.isEmployee) {
+        window.location.href = "/employee/dashboard";
+        return;
+      } else {
+        alert("This account is for customers only. Please use the Customer Login tab.");
+        localStorage.removeItem("session");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("rememberToken");
+        setStep("credentials");
+        return;
+      }
+    } else {
+      if (user.isAdmin || user.isEmployee) {
+        alert("Employee and Admin accounts must use the Employee Login tab.");
+        localStorage.removeItem("session");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("rememberToken");
+        setStep("credentials");
+        return;
+      }
+      window.location.href = "/dashboard";
+    }
+  };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1);
+    setOtp(newOtp);
+    setOtpError("");
+
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted.split(""));
+      inputRefs.current[5]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otpString = otp.join("");
+    if (otpString.length !== 6) {
+      setOtpError("Please enter the complete 6-digit code");
+      return;
+    }
+
+    setIsVerifying(true);
+    setOtpError("");
+
+    const context = step === "unverified" ? "signup" : "login";
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: otpEmail,
+          otp: otpString,
+          context,
+          rememberMe: context === "login" ? formData.rememberMe : undefined,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setOtpError(data.error || "Invalid verification code");
+        setIsVerifying(false);
+        return;
+      }
+
+      if (context === "signup") {
+        // Email verified — now they can log in
+        alert("Email verified! Please sign in with your credentials.");
+        setStep("credentials");
+        setOtp(["", "", "", "", "", ""]);
+      } else {
+        // Login OTP verified — redirect
+        handleLoginSuccess(data.user, data.rememberToken);
+      }
+    } catch (error) {
+      setOtpError("Could not verify. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+
+    try {
+      await fetch(`${API_URL}/api/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpEmail }),
+      });
+      setResendCooldown(60);
+      setOtp(["", "", "", "", "", ""]);
+      setOtpError("");
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      setOtpError("Failed to resend code. Please try again.");
+    }
+  };
+
+  // OTP verification screen (for both login OTP and unverified email)
+  if (step === "otp" || step === "unverified") {
+    const isUnverified = step === "unverified";
+    return (
+      <main className="pt-20 min-h-screen bg-brand-dark">
+        <section className="py-16">
+          <div className="max-w-md mx-auto px-6">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl md:text-5xl font-serif text-white mb-4">
+                {isUnverified ? (
+                  <>Verify Your <span className="text-brand-gold italic">Email</span></>
+                ) : (
+                  <>Enter <span className="text-brand-gold italic">Code</span></>
+                )}
+              </h1>
+              <p className="text-gray-400 font-sans">
+                {isUnverified
+                  ? "Your email is not verified yet. We've sent a verification code to"
+                  : "We've sent a 6-digit verification code to"}
+                {" "}
+                <span className="text-brand-gold font-semibold">{otpEmail}</span>
+              </p>
+            </div>
+
+            <div className="bg-brand-gray p-8 md:p-12 border border-white/10 rounded">
+              {/* OTP Inputs */}
+              <div className="flex justify-center gap-3 mb-6" onPaste={handleOtpPaste}>
+                {otp.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    className="w-12 h-14 text-center text-xl font-bold bg-brand-dark border border-white/10 text-white rounded focus:outline-none focus:border-brand-gold transition-colors font-sans"
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <p className="text-red-400 text-sm text-center mb-4 font-sans">{otpError}</p>
+              )}
+
+              <button
+                onClick={handleVerifyOtp}
+                disabled={isVerifying || otp.join("").length !== 6}
+                className="w-full px-8 py-4 bg-brand-gold text-black hover:bg-white transition-all duration-300 font-sans text-sm tracking-widest uppercase font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-4"
+              >
+                {isVerifying ? "Verifying..." : isUnverified ? "Verify Email" : "Sign In"}
+                {!isVerifying && <ArrowRight size={18} />}
+              </button>
+
+              <div className="text-center space-y-2">
+                <p className="text-gray-500 text-sm font-sans">
+                  Didn&apos;t receive the code?{" "}
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0}
+                    className="text-brand-gold hover:underline font-semibold disabled:opacity-50 disabled:no-underline"
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
+                  </button>
+                </p>
+                <button
+                  onClick={() => {
+                    setStep("credentials");
+                    setOtp(["", "", "", "", "", ""]);
+                    setOtpError("");
+                  }}
+                  className="text-gray-500 text-sm font-sans hover:text-white transition-colors"
+                >
+                  Back to sign in
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="pt-20 min-h-screen bg-brand-dark">
@@ -220,7 +438,7 @@ export default function LoginPage() {
                     className="w-4 h-4 accent-brand-gold"
                   />
                   <label htmlFor="rememberMe" className="text-gray-400 text-sm font-sans">
-                    Remember me
+                    Remember me for 30 days
                   </label>
                 </div>
                 <Link
@@ -284,7 +502,7 @@ export default function LoginPage() {
             <div className="mt-8 pt-6 border-t border-white/10 text-center">
               {activeTab === "customer" ? (
                 <p className="text-gray-400 font-sans text-sm">
-                  Don't have an account?{" "}
+                  Don&apos;t have an account?{" "}
                   <Link href="/signup" className="text-brand-gold hover:underline font-semibold">
                     Create Account
                   </Link>

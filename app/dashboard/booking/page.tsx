@@ -12,6 +12,13 @@ interface GoodsItem {
   value: number;
 }
 
+interface IntlOption {
+  destination: string;
+  country: string;
+  service: string;
+  max_weight: number;
+}
+
 export default function DashboardBookingPage() {
   const router = useRouter();
   const { session } = useSession();
@@ -46,6 +53,11 @@ export default function DashboardBookingPage() {
   const [serviceType, setServiceType] = useState("");
   const [pickupDate, setPickupDate] = useState("");
 
+  // International options
+  const [intlOptions, setIntlOptions] = useState<IntlOption[]>([]);
+  const [selectedIntlOption, setSelectedIntlOption] = useState("");
+  const [intlLoading, setIntlLoading] = useState(false);
+
   // Goods Details
   const [goods, setGoods] = useState<GoodsItem[]>([
     { description: "", quantity: 1, hsn_code: "", value: 0 },
@@ -54,11 +66,29 @@ export default function DashboardBookingPage() {
   useEffect(() => {
     setPriceDetails(null);
     setServiceType("");
+    setSelectedIntlOption("");
     if (shipmentType === "domestic") {
       setReceiverCountry("India");
     } else {
       setReceiverCountry("");
       setServiceType("International Express");
+      // Fetch international options
+      const fetchOptions = async () => {
+        setIntlLoading(true);
+        try {
+          const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
+          const res = await fetch(`${apiUrl}/api/international/options`);
+          const data = await res.json();
+          if (data.options) {
+            setIntlOptions(data.options);
+          }
+        } catch (err) {
+          console.error("Failed to fetch international options:", err);
+        } finally {
+          setIntlLoading(false);
+        }
+      };
+      fetchOptions();
     }
   }, [shipmentType]);
 
@@ -91,8 +121,8 @@ export default function DashboardBookingPage() {
       return;
     }
 
-    if (shipmentType === "international" && !receiverCountry) {
-      alert("Please fill receiver country");
+    if (shipmentType === "international" && !selectedIntlOption) {
+      alert("Please select a destination and service");
       return;
     }
 
@@ -113,9 +143,11 @@ export default function DashboardBookingPage() {
           mode: serviceType,
         };
       } else {
-        url = `${apiUrl}/api/international/price`;
+        const [dest, svc] = selectedIntlOption.split("||");
+        url = `${apiUrl}/api/international/calculate`;
         body = {
-          country: receiverCountry,
+          destination: dest,
+          service: svc,
           weight: weight,
         };
       }
@@ -358,6 +390,43 @@ export default function DashboardBookingPage() {
               <label className={labelClass}>Country *</label>
               <input type="text" required value={receiverCountry} onChange={(e) => setReceiverCountry(e.target.value)} disabled={shipmentType === "domestic"} className={`${inputClass} disabled:opacity-50`} placeholder={shipmentType === "domestic" ? "India" : "Country name"} />
             </div>
+            {shipmentType === "international" && (
+              <div className="md:col-span-2">
+                <label className={labelClass}>Destination & Service *</label>
+                {intlLoading ? (
+                  <div className="flex items-center gap-2 text-[#F5F5F0]/60 py-3">
+                    <div className="h-4 w-4 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin" />
+                    Loading available services...
+                  </div>
+                ) : intlOptions.length > 0 ? (
+                  <select
+                    required
+                    value={selectedIntlOption}
+                    onChange={(e) => {
+                      setSelectedIntlOption(e.target.value);
+                      setPriceDetails(null);
+                      if (e.target.value) {
+                        const [dest] = e.target.value.split("||");
+                        const opt = intlOptions.find(o => o.destination === dest);
+                        if (opt) setReceiverCountry(opt.country);
+                      }
+                    }}
+                    className={inputClass}
+                  >
+                    <option value="">Select destination & service</option>
+                    {intlOptions.map((opt, i) => (
+                      <option key={i} value={`${opt.destination}||${opt.service}`}>
+                        {opt.country} ({opt.destination}) - {opt.service} (max {opt.max_weight}kg)
+                      </option>
+                    ))}
+                  </select>
+                ) : (
+                  <p className="text-[#F5F5F0]/40 py-3 text-sm">
+                    No international rate options available. Please contact support.
+                  </p>
+                )}
+              </div>
+            )}
           </div>
         </div>
 

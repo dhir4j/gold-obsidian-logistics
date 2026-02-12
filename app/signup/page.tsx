@@ -1,9 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { BRAND } from "@/lib/config";
-import { User, Mail, Lock, Phone, Building } from "lucide-react";
+import { User, Mail, Lock, Phone, Building, ArrowRight, CheckCircle } from "lucide-react";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
 
 export default function SignUpPage() {
   const [formData, setFormData] = useState({
@@ -18,6 +20,22 @@ export default function SignUpPage() {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // OTP state
+  const [step, setStep] = useState<"form" | "otp" | "success">("form");
+  const [otpEmail, setOtpEmail] = useState("");
+  const [otp, setOtp] = useState(["", "", "", "", "", ""]);
+  const [otpError, setOtpError] = useState("");
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [resendCooldown, setResendCooldown] = useState(0);
+  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
+
+  // Resend cooldown timer
+  useEffect(() => {
+    if (resendCooldown <= 0) return;
+    const timer = setTimeout(() => setResendCooldown(resendCooldown - 1), 1000);
+    return () => clearTimeout(timer);
+  }, [resendCooldown]);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -39,25 +57,23 @@ export default function SignUpPage() {
     setIsSubmitting(true);
 
     try {
-      const response = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/auth/signup`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            first_name: formData.firstName,
-            last_name: formData.lastName,
-            email: formData.email,
-            password: formData.password,
-          }),
-        }
-      );
+      const response = await fetch(`${API_URL}/api/auth/signup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          first_name: formData.firstName,
+          last_name: formData.lastName,
+          email: formData.email,
+          password: formData.password,
+        }),
+      });
 
       const data = await response.json();
 
-      if (response.ok) {
-        alert("Account created successfully! Please login.");
-        window.location.href = "/login";
+      if (response.ok || data.requiresVerification) {
+        setOtpEmail(data.email || formData.email);
+        setStep("otp");
+        setResendCooldown(60);
       } else {
         alert(data.error || "Failed to create account");
       }
@@ -68,6 +84,178 @@ export default function SignUpPage() {
       setIsSubmitting(false);
     }
   };
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (!/^\d*$/.test(value)) return;
+
+    const newOtp = [...otp];
+    newOtp[index] = value.slice(-1);
+    setOtp(newOtp);
+    setOtpError("");
+
+    // Auto-focus next input
+    if (value && index < 5) {
+      inputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
+    if (e.key === "Backspace" && !otp[index] && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, 6);
+    if (pasted.length === 6) {
+      setOtp(pasted.split(""));
+      inputRefs.current[5]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const otpString = otp.join("");
+    if (otpString.length !== 6) {
+      setOtpError("Please enter the complete 6-digit code");
+      return;
+    }
+
+    setIsVerifying(true);
+    setOtpError("");
+
+    try {
+      const response = await fetch(`${API_URL}/api/auth/verify-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: otpEmail,
+          otp: otpString,
+          context: "signup",
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.verified) {
+        setStep("success");
+        setTimeout(() => {
+          window.location.href = "/login";
+        }, 2000);
+      } else {
+        setOtpError(data.error || "Invalid verification code");
+      }
+    } catch (error) {
+      setOtpError("Could not verify. Please try again.");
+    } finally {
+      setIsVerifying(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (resendCooldown > 0) return;
+
+    try {
+      await fetch(`${API_URL}/api/auth/send-otp`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email: otpEmail }),
+      });
+      setResendCooldown(60);
+      setOtp(["", "", "", "", "", ""]);
+      setOtpError("");
+      inputRefs.current[0]?.focus();
+    } catch (error) {
+      setOtpError("Failed to resend code. Please try again.");
+    }
+  };
+
+  // Success screen
+  if (step === "success") {
+    return (
+      <main className="pt-20 min-h-screen bg-brand-dark">
+        <section className="py-16">
+          <div className="max-w-md mx-auto px-6 text-center">
+            <div className="bg-brand-gray p-12 border border-white/10 rounded">
+              <CheckCircle className="mx-auto mb-6 text-green-500" size={64} />
+              <h2 className="text-2xl font-serif text-white mb-4">
+                Email <span className="text-brand-gold italic">Verified!</span>
+              </h2>
+              <p className="text-gray-400 font-sans mb-4">
+                Your account has been verified successfully. Redirecting to sign in...
+              </p>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+
+  // OTP verification screen
+  if (step === "otp") {
+    return (
+      <main className="pt-20 min-h-screen bg-brand-dark">
+        <section className="py-16">
+          <div className="max-w-md mx-auto px-6">
+            <div className="text-center mb-8">
+              <h1 className="text-4xl md:text-5xl font-serif text-white mb-4">
+                Verify Your <span className="text-brand-gold italic">Email</span>
+              </h1>
+              <p className="text-gray-400 font-sans">
+                We&apos;ve sent a 6-digit code to{" "}
+                <span className="text-brand-gold font-semibold">{otpEmail}</span>
+              </p>
+            </div>
+
+            <div className="bg-brand-gray p-8 md:p-12 border border-white/10 rounded">
+              {/* OTP Inputs */}
+              <div className="flex justify-center gap-3 mb-6" onPaste={handleOtpPaste}>
+                {otp.map((digit, i) => (
+                  <input
+                    key={i}
+                    ref={(el) => { inputRefs.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(i, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(i, e)}
+                    className="w-12 h-14 text-center text-xl font-bold bg-brand-dark border border-white/10 text-white rounded focus:outline-none focus:border-brand-gold transition-colors font-sans"
+                  />
+                ))}
+              </div>
+
+              {otpError && (
+                <p className="text-red-400 text-sm text-center mb-4 font-sans">{otpError}</p>
+              )}
+
+              <button
+                onClick={handleVerifyOtp}
+                disabled={isVerifying || otp.join("").length !== 6}
+                className="w-full px-8 py-4 bg-brand-gold text-black hover:bg-white transition-all duration-300 font-sans text-sm tracking-widest uppercase font-semibold disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mb-4"
+              >
+                {isVerifying ? "Verifying..." : "Verify Email"}
+                {!isVerifying && <ArrowRight size={18} />}
+              </button>
+
+              <div className="text-center">
+                <p className="text-gray-500 text-sm font-sans">
+                  Didn&apos;t receive the code?{" "}
+                  <button
+                    onClick={handleResendOtp}
+                    disabled={resendCooldown > 0}
+                    className="text-brand-gold hover:underline font-semibold disabled:opacity-50 disabled:no-underline"
+                  >
+                    {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : "Resend Code"}
+                  </button>
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
 
   return (
     <main className="pt-20 min-h-screen bg-brand-dark">
