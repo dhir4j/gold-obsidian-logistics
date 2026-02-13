@@ -17,6 +17,13 @@ interface HSNResult {
   description: string;
 }
 
+interface IntlOption {
+  destination: string;
+  country: string;
+  service: string;
+  max_weight: number;
+}
+
 export default function DashboardBookingPage() {
   const router = useRouter();
   const { session } = useSession();
@@ -52,9 +59,10 @@ export default function DashboardBookingPage() {
   const [pickupDate, setPickupDate] = useState("");
 
   // International - country autocomplete
-  const [intlCountries, setIntlCountries] = useState<string[]>([]);
+  const [intlOptions, setIntlOptions] = useState<IntlOption[]>([]);
   const [countrySearch, setCountrySearch] = useState("");
   const [showCountryDropdown, setShowCountryDropdown] = useState(false);
+  const [selectedIntlOption, setSelectedIntlOption] = useState<IntlOption | null>(null);
   const [intlLoading, setIntlLoading] = useState(false);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
 
@@ -72,17 +80,28 @@ export default function DashboardBookingPage() {
 
   // Volumetric weight calculation
   const actualWeight = parseFloat(packageWeight) || 0;
-  const length = parseFloat(packageLength) || 0;
-  const width = parseFloat(packageWidth) || 0;
-  const height = parseFloat(packageHeight) || 0;
-  const volumetricWeight = length > 0 && width > 0 && height > 0 ? (length * width * height) / 5000 : 0;
+  const lengthVal = parseFloat(packageLength) || 0;
+  const widthVal = parseFloat(packageWidth) || 0;
+  const heightVal = parseFloat(packageHeight) || 0;
+  const volumetricWeight = lengthVal > 0 && widthVal > 0 && heightVal > 0 ? (lengthVal * widthVal * heightVal) / 5000 : 0;
   const chargeableWeight = Math.max(actualWeight, volumetricWeight);
   const showWeightComparison = actualWeight > 0 && volumetricWeight > 0;
+
+  // Max weight for international
+  const intlMaxWeight = selectedIntlOption?.max_weight || 0;
+
+  // Pickup date limits: today to today+45 days
+  const today = new Date().toISOString().split("T")[0];
+  const maxPickupDate = new Date(Date.now() + 45 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+
+  // Weight exceeded check
+  const weightExceeded = shipmentType === "international" && intlMaxWeight > 0 && chargeableWeight > intlMaxWeight;
 
   useEffect(() => {
     setPriceDetails(null);
     setServiceType("");
     setCountrySearch("");
+    setSelectedIntlOption(null);
     if (shipmentType === "domestic") {
       setReceiverCountry("India");
     } else {
@@ -95,8 +114,7 @@ export default function DashboardBookingPage() {
           const res = await fetch(`${apiUrl}/api/international/options`);
           const data = await res.json();
           if (data.options) {
-            const countries: string[] = [...new Set<string>(data.options.map((o: any) => o.country as string))].sort();
-            setIntlCountries(countries);
+            setIntlOptions(data.options);
           }
         } catch (err) {
           console.error("Failed to fetch international options:", err);
@@ -108,7 +126,7 @@ export default function DashboardBookingPage() {
     }
   }, [shipmentType]);
 
-  // Close country dropdown on outside click
+  // Close dropdowns on outside click
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
@@ -122,9 +140,18 @@ export default function DashboardBookingPage() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filteredCountries = intlCountries.filter((c) =>
-    c.toLowerCase().includes(countrySearch.toLowerCase())
-  );
+  // Filter international options by search text
+  const filteredIntlOptions = intlOptions.filter((o) => {
+    const label = `${o.country} (${o.service})`.toLowerCase();
+    return label.includes(countrySearch.toLowerCase());
+  });
+
+  // Format service name for display
+  const formatService = (service: string) => {
+    if (service === "SELF") return "Self Clearance";
+    if (service === "DDP") return "Duty Paid";
+    return service;
+  };
 
   // HSN search with debounce
   const searchHSN = useCallback((query: string, itemIndex: number) => {
@@ -173,7 +200,7 @@ export default function DashboardBookingPage() {
       return;
     }
 
-    if (length <= 0 || width <= 0 || height <= 0) {
+    if (lengthVal <= 0 || widthVal <= 0 || heightVal <= 0) {
       alert("Please enter valid package dimensions (length, width, height)");
       return;
     }
@@ -183,15 +210,20 @@ export default function DashboardBookingPage() {
       return;
     }
 
-    if (shipmentType === "international" && !receiverCountry) {
+    if (shipmentType === "international" && !selectedIntlOption) {
       alert("Please select a destination country");
+      return;
+    }
+
+    // Check max weight for international
+    if (shipmentType === "international" && intlMaxWeight > 0 && chargeableWeight > intlMaxWeight) {
+      alert(`Maximum chargeable weight for ${selectedIntlOption!.country} (${formatService(selectedIntlOption!.service)}) is ${intlMaxWeight} kg. Your chargeable weight is ${chargeableWeight.toFixed(2)} kg.`);
       return;
     }
 
     setIsCalculating(true);
     setPriceDetails(null);
 
-    // Use chargeable weight (max of actual vs volumetric)
     const weightForPricing = chargeableWeight;
 
     try {
@@ -208,9 +240,10 @@ export default function DashboardBookingPage() {
           mode: serviceType,
         };
       } else {
-        url = `${apiUrl}/api/international/price`;
+        url = `${apiUrl}/api/international/calculate`;
         body = {
-          country: receiverCountry,
+          destination: selectedIntlOption!.destination,
+          service: selectedIntlOption!.service,
           weight: weightForPricing,
         };
       }
@@ -242,6 +275,11 @@ export default function DashboardBookingPage() {
 
     if (!priceDetails) {
       alert("Please calculate price before booking");
+      return;
+    }
+
+    if (weightExceeded) {
+      alert(`Chargeable weight (${chargeableWeight.toFixed(2)} kg) exceeds maximum allowed (${intlMaxWeight} kg) for this destination.`);
       return;
     }
 
@@ -278,11 +316,11 @@ export default function DashboardBookingPage() {
         receiver_address_pincode: receiverPincode,
         receiver_address_country: receiverCountry,
         package_weight_kg: chargeableWeight,
-        package_length_cm: length,
-        package_width_cm: width,
-        package_height_cm: height,
+        package_length_cm: lengthVal,
+        package_width_cm: widthVal,
+        package_height_cm: heightVal,
         service_type: serviceType,
-        pickup_date: pickupDate || new Date().toISOString().split("T")[0],
+        pickup_date: pickupDate || today,
         goods: goods,
         final_total_price_with_tax: priceDetails.total_price || priceDetails.total_with_tax_18_percent,
       };
@@ -456,11 +494,11 @@ export default function DashboardBookingPage() {
               </div>
             ) : (
               <div className="md:col-span-2" ref={countryDropdownRef}>
-                <label className={labelClass}>Destination Country *</label>
+                <label className={labelClass}>Destination Country & Service *</label>
                 {intlLoading ? (
                   <div className="flex items-center gap-2 text-[#F5F5F0]/60 py-3">
                     <div className="h-4 w-4 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin" />
-                    Loading available countries...
+                    Loading available destinations...
                   </div>
                 ) : (
                   <div className="relative">
@@ -472,6 +510,7 @@ export default function DashboardBookingPage() {
                       onChange={(e) => {
                         setCountrySearch(e.target.value);
                         setShowCountryDropdown(true);
+                        setSelectedIntlOption(null);
                         setReceiverCountry("");
                         setPriceDetails(null);
                       }}
@@ -479,31 +518,39 @@ export default function DashboardBookingPage() {
                       className={inputWithIconClass}
                       placeholder="Type to search country..."
                     />
-                    {showCountryDropdown && countrySearch && filteredCountries.length > 0 && (
-                      <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-[#1a1a1a] border border-[#C5A059]/30 rounded-lg shadow-xl">
-                        {filteredCountries.map((country) => (
+                    {showCountryDropdown && countrySearch && filteredIntlOptions.length > 0 && (
+                      <div className="absolute z-20 w-full mt-1 max-h-56 overflow-y-auto bg-[#1a1a1a] border border-[#C5A059]/30 rounded-lg shadow-xl">
+                        {filteredIntlOptions.map((opt, i) => (
                           <button
-                            key={country}
+                            key={`${opt.destination}-${opt.service}-${i}`}
                             type="button"
                             onClick={() => {
-                              setCountrySearch(country);
-                              setReceiverCountry(country);
+                              setCountrySearch(`${opt.country} (${formatService(opt.service)})`);
+                              setSelectedIntlOption(opt);
+                              setReceiverCountry(opt.country);
                               setShowCountryDropdown(false);
                               setPriceDetails(null);
                             }}
                             className="w-full text-left px-4 py-3 text-[#F5F5F0] hover:bg-[#C5A059]/20 transition-colors border-b border-[#C5A059]/10 last:border-b-0"
                           >
-                            {country}
+                            <span className="font-medium">{opt.country}</span>
+                            <span className="ml-2 text-sm text-[#C5A059]">({formatService(opt.service)})</span>
+                            <span className="ml-2 text-xs text-[#F5F5F0]/40">max {opt.max_weight} kg</span>
                           </button>
                         ))}
                       </div>
                     )}
-                    {showCountryDropdown && countrySearch && filteredCountries.length === 0 && (
+                    {showCountryDropdown && countrySearch && filteredIntlOptions.length === 0 && (
                       <div className="absolute z-20 w-full mt-1 bg-[#1a1a1a] border border-[#C5A059]/30 rounded-lg shadow-xl px-4 py-3 text-[#F5F5F0]/40 text-sm">
-                        No matching countries found
+                        No matching destinations found
                       </div>
                     )}
                   </div>
+                )}
+                {selectedIntlOption && (
+                  <p className="mt-2 text-xs text-[#C5A059]/70">
+                    Max weight: {selectedIntlOption.max_weight} kg | Service: {formatService(selectedIntlOption.service)}
+                  </p>
                 )}
               </div>
             )}
@@ -520,7 +567,7 @@ export default function DashboardBookingPage() {
               <label className={labelClass}>Actual Weight (kg) *</label>
               <div className="relative">
                 <Scale className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-                <input type="number" step="0.1" min="0.01" required value={packageWeight} onChange={(e) => { setPackageWeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="0.5" />
+                <input type="number" step="any" min="0.01" required value={packageWeight} onChange={(e) => { setPackageWeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="0.5" />
               </div>
             </div>
             {shipmentType === "domestic" && (
@@ -538,36 +585,36 @@ export default function DashboardBookingPage() {
               <label className={labelClass}>Length (cm) *</label>
               <div className="relative">
                 <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-                <input type="number" step="0.1" min="0.1" required value={packageLength} onChange={(e) => { setPackageLength(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="30" />
+                <input type="number" step="any" min="0.1" required value={packageLength} onChange={(e) => { setPackageLength(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="30" />
               </div>
             </div>
             <div>
               <label className={labelClass}>Width (cm) *</label>
               <div className="relative">
                 <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-                <input type="number" step="0.1" min="0.1" required value={packageWidth} onChange={(e) => { setPackageWidth(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="20" />
+                <input type="number" step="any" min="0.1" required value={packageWidth} onChange={(e) => { setPackageWidth(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="20" />
               </div>
             </div>
             <div>
               <label className={labelClass}>Height (cm) *</label>
               <div className="relative">
                 <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-                <input type="number" step="0.1" min="0.1" required value={packageHeight} onChange={(e) => { setPackageHeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="10" />
+                <input type="number" step="any" min="0.1" required value={packageHeight} onChange={(e) => { setPackageHeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="10" />
               </div>
             </div>
             <div>
-              <label className={labelClass}>Pickup Date</label>
+              <label className={labelClass}>Pickup Date *</label>
               <div className="relative">
                 <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-                <input type="date" value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputWithIconClass} />
+                <input type="date" required min={today} max={maxPickupDate} value={pickupDate} onChange={(e) => setPickupDate(e.target.value)} className={inputWithIconClass} />
               </div>
             </div>
           </div>
 
           {/* Volumetric Weight Comparison */}
           {showWeightComparison && (
-            <div className="mt-6 p-5 rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/5">
-              <h3 className="text-sm font-semibold text-[#C5A059] mb-3 uppercase tracking-wider">Weight Comparison</h3>
+            <div className={`mt-6 p-5 rounded-lg border ${weightExceeded ? "border-red-500/50 bg-red-900/10" : "border-[#C5A059]/30 bg-[#C5A059]/5"}`}>
+              <h3 className={`text-sm font-semibold mb-3 uppercase tracking-wider ${weightExceeded ? "text-red-400" : "text-[#C5A059]"}`}>Weight Comparison</h3>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className={`p-3 rounded-lg text-center ${chargeableWeight === actualWeight && volumetricWeight !== actualWeight ? "bg-[#C5A059]/20 border border-[#C5A059]/40" : "bg-[#121212]/50 border border-white/5"}`}>
                   <p className="text-xs text-[#F5F5F0]/50 mb-1">Actual Weight</p>
@@ -576,16 +623,23 @@ export default function DashboardBookingPage() {
                 <div className={`p-3 rounded-lg text-center ${chargeableWeight === volumetricWeight && volumetricWeight !== actualWeight ? "bg-[#C5A059]/20 border border-[#C5A059]/40" : "bg-[#121212]/50 border border-white/5"}`}>
                   <p className="text-xs text-[#F5F5F0]/50 mb-1">Volumetric Weight</p>
                   <p className="text-lg font-bold text-[#F5F5F0]">{volumetricWeight.toFixed(2)} kg</p>
-                  <p className="text-[10px] text-[#F5F5F0]/30 mt-1">({length} x {width} x {height}) / 5000</p>
+                  <p className="text-[10px] text-[#F5F5F0]/30 mt-1">({lengthVal} x {widthVal} x {heightVal}) / 5000</p>
                 </div>
-                <div className="p-3 rounded-lg text-center bg-[#C5A059]/20 border border-[#C5A059]/50">
-                  <p className="text-xs text-[#C5A059] mb-1 font-semibold">Chargeable Weight</p>
-                  <p className="text-lg font-bold text-[#C5A059]">{chargeableWeight.toFixed(2)} kg</p>
+                <div className={`p-3 rounded-lg text-center ${weightExceeded ? "bg-red-900/30 border border-red-500/50" : "bg-[#C5A059]/20 border border-[#C5A059]/50"}`}>
+                  <p className={`text-xs mb-1 font-semibold ${weightExceeded ? "text-red-400" : "text-[#C5A059]"}`}>Chargeable Weight</p>
+                  <p className={`text-lg font-bold ${weightExceeded ? "text-red-400" : "text-[#C5A059]"}`}>{chargeableWeight.toFixed(2)} kg</p>
                   <p className="text-[10px] text-[#F5F5F0]/40 mt-1">
-                    {volumetricWeight > actualWeight ? "Volumetric is higher" : volumetricWeight < actualWeight ? "Actual is higher" : "Both are equal"}
+                    {weightExceeded
+                      ? `Exceeds max ${intlMaxWeight} kg`
+                      : volumetricWeight > actualWeight ? "Volumetric is higher" : volumetricWeight < actualWeight ? "Actual is higher" : "Both are equal"}
                   </p>
                 </div>
               </div>
+              {weightExceeded && (
+                <p className="mt-3 text-sm text-red-400 text-center">
+                  Maximum allowed weight for {selectedIntlOption?.country} ({formatService(selectedIntlOption?.service || "")}) is {intlMaxWeight} kg
+                </p>
+              )}
             </div>
           )}
         </div>
@@ -688,7 +742,7 @@ export default function DashboardBookingPage() {
           <button
             type="button"
             onClick={handleCalculatePrice}
-            disabled={isCalculating}
+            disabled={isCalculating || weightExceeded}
             className="inline-flex items-center px-8 py-4 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-semibold rounded-lg hover:shadow-lg hover:shadow-[#C5A059]/20 transition-all duration-300 disabled:opacity-50"
           >
             <Calculator className="mr-2 h-5 w-5" />
@@ -715,7 +769,7 @@ export default function DashboardBookingPage() {
         <div className="flex justify-center">
           <button
             type="submit"
-            disabled={isSubmitting || !priceDetails}
+            disabled={isSubmitting || !priceDetails || weightExceeded}
             className="inline-flex items-center px-12 py-4 bg-gradient-to-r from-[#C5A059] to-[#8B7239] text-[#121212] font-bold text-lg rounded-lg hover:shadow-xl hover:shadow-[#C5A059]/30 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <Package className="mr-2 h-6 w-6" />
