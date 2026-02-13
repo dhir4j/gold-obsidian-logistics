@@ -137,12 +137,12 @@ export default function SignUpPage() {
 
       const data = await response.json();
 
-      if (response.ok && data.verified) {
-        setStep("success");
-        setTimeout(() => {
-          window.location.href = "/login";
-        }, 2000);
-      } else {
+      if (response.ok && data.verified && data.user) {
+        localStorage.setItem("session", JSON.stringify(data.user));
+        localStorage.setItem("userEmail", data.user.email);
+        window.location.href = "/dashboard";
+        return;
+      } else if (!response.ok) {
         setOtpError(data.error || "Invalid verification code");
       }
     } catch (error) {
@@ -169,27 +169,6 @@ export default function SignUpPage() {
       setOtpError("Failed to resend code. Please try again.");
     }
   };
-
-  // Success screen
-  if (step === "success") {
-    return (
-      <main className="pt-20 min-h-screen bg-brand-dark">
-        <section className="py-16">
-          <div className="max-w-md mx-auto px-6 text-center">
-            <div className="bg-brand-gray p-12 border border-white/10 rounded">
-              <CheckCircle className="mx-auto mb-6 text-green-500" size={64} />
-              <h2 className="text-2xl font-serif text-white mb-4">
-                Email <span className="text-brand-gold italic">Verified!</span>
-              </h2>
-              <p className="text-gray-400 font-sans mb-4">
-                Your account has been verified successfully. Redirecting to sign in...
-              </p>
-            </div>
-          </div>
-        </section>
-      </main>
-    );
-  }
 
   // OTP verification screen
   if (step === "otp") {
