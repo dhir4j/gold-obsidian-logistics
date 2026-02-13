@@ -95,7 +95,7 @@ export default function DashboardBookingPage() {
           const res = await fetch(`${apiUrl}/api/international/options`);
           const data = await res.json();
           if (data.options) {
-            const countries = [...new Set(data.options.map((o: any) => o.country as string))].sort();
+            const countries: string[] = [...new Set<string>(data.options.map((o: any) => o.country as string))].sort();
             setIntlCountries(countries);
           }
         } catch (err) {
