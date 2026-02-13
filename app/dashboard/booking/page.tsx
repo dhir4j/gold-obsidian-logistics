@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Package, MapPin, User, Phone, Calendar, Truck, Globe, PlusCircle, Trash2, Calculator } from "lucide-react";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { Package, MapPin, User, Phone, Calendar, Truck, Globe, PlusCircle, Trash2, Calculator, Scale, Ruler } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useSession } from "@/hooks/use-session";
 
@@ -12,11 +12,9 @@ interface GoodsItem {
   value: number;
 }
 
-interface IntlOption {
-  destination: string;
-  country: string;
-  service: string;
-  max_weight: number;
+interface HSNResult {
+  code: string;
+  description: string;
 }
 
 export default function DashboardBookingPage() {
@@ -53,26 +51,43 @@ export default function DashboardBookingPage() {
   const [serviceType, setServiceType] = useState("");
   const [pickupDate, setPickupDate] = useState("");
 
-  // International options
-  const [intlOptions, setIntlOptions] = useState<IntlOption[]>([]);
-  const [selectedIntlOption, setSelectedIntlOption] = useState("");
+  // International - country autocomplete
+  const [intlCountries, setIntlCountries] = useState<string[]>([]);
+  const [countrySearch, setCountrySearch] = useState("");
+  const [showCountryDropdown, setShowCountryDropdown] = useState(false);
   const [intlLoading, setIntlLoading] = useState(false);
+  const countryDropdownRef = useRef<HTMLDivElement>(null);
 
   // Goods Details
   const [goods, setGoods] = useState<GoodsItem[]>([
     { description: "", quantity: 1, hsn_code: "", value: 0 },
   ]);
 
+  // HSN autocomplete
+  const [hsnDropdownIndex, setHsnDropdownIndex] = useState<number | null>(null);
+  const [hsnResults, setHsnResults] = useState<HSNResult[]>([]);
+  const [hsnLoading, setHsnLoading] = useState(false);
+  const hsnDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const hsnDropdownRef = useRef<HTMLDivElement>(null);
+
+  // Volumetric weight calculation
+  const actualWeight = parseFloat(packageWeight) || 0;
+  const length = parseFloat(packageLength) || 0;
+  const width = parseFloat(packageWidth) || 0;
+  const height = parseFloat(packageHeight) || 0;
+  const volumetricWeight = length > 0 && width > 0 && height > 0 ? (length * width * height) / 5000 : 0;
+  const chargeableWeight = Math.max(actualWeight, volumetricWeight);
+  const showWeightComparison = actualWeight > 0 && volumetricWeight > 0;
+
   useEffect(() => {
     setPriceDetails(null);
     setServiceType("");
-    setSelectedIntlOption("");
+    setCountrySearch("");
     if (shipmentType === "domestic") {
       setReceiverCountry("India");
     } else {
       setReceiverCountry("");
       setServiceType("International Express");
-      // Fetch international options
       const fetchOptions = async () => {
         setIntlLoading(true);
         try {
@@ -80,7 +95,8 @@ export default function DashboardBookingPage() {
           const res = await fetch(`${apiUrl}/api/international/options`);
           const data = await res.json();
           if (data.options) {
-            setIntlOptions(data.options);
+            const countries = [...new Set(data.options.map((o: any) => o.country as string))].sort();
+            setIntlCountries(countries);
           }
         } catch (err) {
           console.error("Failed to fetch international options:", err);
@@ -91,6 +107,49 @@ export default function DashboardBookingPage() {
       fetchOptions();
     }
   }, [shipmentType]);
+
+  // Close country dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (countryDropdownRef.current && !countryDropdownRef.current.contains(e.target as Node)) {
+        setShowCountryDropdown(false);
+      }
+      if (hsnDropdownRef.current && !hsnDropdownRef.current.contains(e.target as Node)) {
+        setHsnDropdownIndex(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const filteredCountries = intlCountries.filter((c) =>
+    c.toLowerCase().includes(countrySearch.toLowerCase())
+  );
+
+  // HSN search with debounce
+  const searchHSN = useCallback((query: string, itemIndex: number) => {
+    if (hsnDebounceRef.current) clearTimeout(hsnDebounceRef.current);
+
+    if (query.length < 2) {
+      setHsnResults([]);
+      setHsnDropdownIndex(null);
+      return;
+    }
+
+    hsnDebounceRef.current = setTimeout(async () => {
+      setHsnLoading(true);
+      setHsnDropdownIndex(itemIndex);
+      try {
+        const res = await fetch(`/api/hsn?q=${encodeURIComponent(query)}`);
+        const data = await res.json();
+        setHsnResults(data.results || []);
+      } catch {
+        setHsnResults([]);
+      } finally {
+        setHsnLoading(false);
+      }
+    }, 300);
+  }, []);
 
   const addGoodsItem = () => {
     setGoods([...goods, { description: "", quantity: 1, hsn_code: "", value: 0 }]);
@@ -109,10 +168,13 @@ export default function DashboardBookingPage() {
   };
 
   const handleCalculatePrice = async () => {
-    const weight = parseFloat(packageWeight);
-
-    if (!weight || weight <= 0) {
+    if (actualWeight <= 0) {
       alert("Please enter a valid package weight");
+      return;
+    }
+
+    if (length <= 0 || width <= 0 || height <= 0) {
+      alert("Please enter valid package dimensions (length, width, height)");
       return;
     }
 
@@ -121,13 +183,16 @@ export default function DashboardBookingPage() {
       return;
     }
 
-    if (shipmentType === "international" && !selectedIntlOption) {
-      alert("Please select a destination and service");
+    if (shipmentType === "international" && !receiverCountry) {
+      alert("Please select a destination country");
       return;
     }
 
     setIsCalculating(true);
     setPriceDetails(null);
+
+    // Use chargeable weight (max of actual vs volumetric)
+    const weightForPricing = chargeableWeight;
 
     try {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
@@ -139,16 +204,14 @@ export default function DashboardBookingPage() {
         body = {
           city: receiverCity,
           state: receiverState,
-          weight: weight,
+          weight: weightForPricing,
           mode: serviceType,
         };
       } else {
-        const [dest, svc] = selectedIntlOption.split("||");
-        url = `${apiUrl}/api/international/calculate`;
+        url = `${apiUrl}/api/international/price`;
         body = {
-          destination: dest,
-          service: svc,
-          weight: weight,
+          country: receiverCountry,
+          weight: weightForPricing,
         };
       }
 
@@ -214,10 +277,10 @@ export default function DashboardBookingPage() {
         receiver_address_state: receiverState,
         receiver_address_pincode: receiverPincode,
         receiver_address_country: receiverCountry,
-        package_weight_kg: parseFloat(packageWeight),
-        package_length_cm: parseFloat(packageLength) || 0,
-        package_width_cm: parseFloat(packageWidth) || 0,
-        package_height_cm: parseFloat(packageHeight) || 0,
+        package_weight_kg: chargeableWeight,
+        package_length_cm: length,
+        package_width_cm: width,
+        package_height_cm: height,
         service_type: serviceType,
         pickup_date: pickupDate || new Date().toISOString().split("T")[0],
         goods: goods,
@@ -386,44 +449,61 @@ export default function DashboardBookingPage() {
               <label className={labelClass}>Pincode *</label>
               <input type="text" required value={receiverPincode} onChange={(e) => setReceiverPincode(e.target.value)} className={inputClass} placeholder="110001" />
             </div>
-            <div>
-              <label className={labelClass}>Country *</label>
-              <input type="text" required value={receiverCountry} onChange={(e) => setReceiverCountry(e.target.value)} disabled={shipmentType === "domestic"} className={`${inputClass} disabled:opacity-50`} placeholder={shipmentType === "domestic" ? "India" : "Country name"} />
-            </div>
-            {shipmentType === "international" && (
-              <div className="md:col-span-2">
-                <label className={labelClass}>Destination & Service *</label>
+            {shipmentType === "domestic" ? (
+              <div>
+                <label className={labelClass}>Country *</label>
+                <input type="text" required value={receiverCountry} disabled className={`${inputClass} opacity-50`} placeholder="India" />
+              </div>
+            ) : (
+              <div className="md:col-span-2" ref={countryDropdownRef}>
+                <label className={labelClass}>Destination Country *</label>
                 {intlLoading ? (
                   <div className="flex items-center gap-2 text-[#F5F5F0]/60 py-3">
                     <div className="h-4 w-4 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin" />
-                    Loading available services...
+                    Loading available countries...
                   </div>
-                ) : intlOptions.length > 0 ? (
-                  <select
-                    required
-                    value={selectedIntlOption}
-                    onChange={(e) => {
-                      setSelectedIntlOption(e.target.value);
-                      setPriceDetails(null);
-                      if (e.target.value) {
-                        const [dest] = e.target.value.split("||");
-                        const opt = intlOptions.find(o => o.destination === dest);
-                        if (opt) setReceiverCountry(opt.country);
-                      }
-                    }}
-                    className={inputClass}
-                  >
-                    <option value="">Select destination & service</option>
-                    {intlOptions.map((opt, i) => (
-                      <option key={i} value={`${opt.destination}||${opt.service}`}>
-                        {opt.country} ({opt.destination}) - {opt.service} (max {opt.max_weight}kg)
-                      </option>
-                    ))}
-                  </select>
                 ) : (
-                  <p className="text-[#F5F5F0]/40 py-3 text-sm">
-                    No international rate options available. Please contact support.
-                  </p>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50 z-10" />
+                    <input
+                      type="text"
+                      required
+                      value={countrySearch}
+                      onChange={(e) => {
+                        setCountrySearch(e.target.value);
+                        setShowCountryDropdown(true);
+                        setReceiverCountry("");
+                        setPriceDetails(null);
+                      }}
+                      onFocus={() => setShowCountryDropdown(true)}
+                      className={inputWithIconClass}
+                      placeholder="Type to search country..."
+                    />
+                    {showCountryDropdown && countrySearch && filteredCountries.length > 0 && (
+                      <div className="absolute z-20 w-full mt-1 max-h-48 overflow-y-auto bg-[#1a1a1a] border border-[#C5A059]/30 rounded-lg shadow-xl">
+                        {filteredCountries.map((country) => (
+                          <button
+                            key={country}
+                            type="button"
+                            onClick={() => {
+                              setCountrySearch(country);
+                              setReceiverCountry(country);
+                              setShowCountryDropdown(false);
+                              setPriceDetails(null);
+                            }}
+                            className="w-full text-left px-4 py-3 text-[#F5F5F0] hover:bg-[#C5A059]/20 transition-colors border-b border-[#C5A059]/10 last:border-b-0"
+                          >
+                            {country}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {showCountryDropdown && countrySearch && filteredCountries.length === 0 && (
+                      <div className="absolute z-20 w-full mt-1 bg-[#1a1a1a] border border-[#C5A059]/30 rounded-lg shadow-xl px-4 py-3 text-[#F5F5F0]/40 text-sm">
+                        No matching countries found
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             )}
@@ -437,10 +517,10 @@ export default function DashboardBookingPage() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
-              <label className={labelClass}>Weight (kg) *</label>
+              <label className={labelClass}>Actual Weight (kg) *</label>
               <div className="relative">
-                <Package className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
-                <input type="number" step="0.1" required value={packageWeight} onChange={(e) => { setPackageWeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="0.5" />
+                <Scale className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
+                <input type="number" step="0.1" min="0.01" required value={packageWeight} onChange={(e) => { setPackageWeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="0.5" />
               </div>
             </div>
             {shipmentType === "domestic" && (
@@ -455,16 +535,25 @@ export default function DashboardBookingPage() {
               </div>
             )}
             <div>
-              <label className={labelClass}>Length (cm)</label>
-              <input type="number" step="0.1" value={packageLength} onChange={(e) => setPackageLength(e.target.value)} className={inputClass} placeholder="30" />
+              <label className={labelClass}>Length (cm) *</label>
+              <div className="relative">
+                <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
+                <input type="number" step="0.1" min="0.1" required value={packageLength} onChange={(e) => { setPackageLength(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="30" />
+              </div>
             </div>
             <div>
-              <label className={labelClass}>Width (cm)</label>
-              <input type="number" step="0.1" value={packageWidth} onChange={(e) => setPackageWidth(e.target.value)} className={inputClass} placeholder="20" />
+              <label className={labelClass}>Width (cm) *</label>
+              <div className="relative">
+                <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
+                <input type="number" step="0.1" min="0.1" required value={packageWidth} onChange={(e) => { setPackageWidth(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="20" />
+              </div>
             </div>
             <div>
-              <label className={labelClass}>Height (cm)</label>
-              <input type="number" step="0.1" value={packageHeight} onChange={(e) => setPackageHeight(e.target.value)} className={inputClass} placeholder="10" />
+              <label className={labelClass}>Height (cm) *</label>
+              <div className="relative">
+                <Ruler className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-[#C5A059]/50" />
+                <input type="number" step="0.1" min="0.1" required value={packageHeight} onChange={(e) => { setPackageHeight(e.target.value); setPriceDetails(null); }} className={inputWithIconClass} placeholder="10" />
+              </div>
             </div>
             <div>
               <label className={labelClass}>Pickup Date</label>
@@ -474,6 +563,31 @@ export default function DashboardBookingPage() {
               </div>
             </div>
           </div>
+
+          {/* Volumetric Weight Comparison */}
+          {showWeightComparison && (
+            <div className="mt-6 p-5 rounded-lg border border-[#C5A059]/30 bg-[#C5A059]/5">
+              <h3 className="text-sm font-semibold text-[#C5A059] mb-3 uppercase tracking-wider">Weight Comparison</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className={`p-3 rounded-lg text-center ${chargeableWeight === actualWeight && volumetricWeight !== actualWeight ? "bg-[#C5A059]/20 border border-[#C5A059]/40" : "bg-[#121212]/50 border border-white/5"}`}>
+                  <p className="text-xs text-[#F5F5F0]/50 mb-1">Actual Weight</p>
+                  <p className="text-lg font-bold text-[#F5F5F0]">{actualWeight.toFixed(2)} kg</p>
+                </div>
+                <div className={`p-3 rounded-lg text-center ${chargeableWeight === volumetricWeight && volumetricWeight !== actualWeight ? "bg-[#C5A059]/20 border border-[#C5A059]/40" : "bg-[#121212]/50 border border-white/5"}`}>
+                  <p className="text-xs text-[#F5F5F0]/50 mb-1">Volumetric Weight</p>
+                  <p className="text-lg font-bold text-[#F5F5F0]">{volumetricWeight.toFixed(2)} kg</p>
+                  <p className="text-[10px] text-[#F5F5F0]/30 mt-1">({length} x {width} x {height}) / 5000</p>
+                </div>
+                <div className="p-3 rounded-lg text-center bg-[#C5A059]/20 border border-[#C5A059]/50">
+                  <p className="text-xs text-[#C5A059] mb-1 font-semibold">Chargeable Weight</p>
+                  <p className="text-lg font-bold text-[#C5A059]">{chargeableWeight.toFixed(2)} kg</p>
+                  <p className="text-[10px] text-[#F5F5F0]/40 mt-1">
+                    {volumetricWeight > actualWeight ? "Volumetric is higher" : volumetricWeight < actualWeight ? "Actual is higher" : "Both are equal"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Goods Details */}
@@ -492,7 +606,7 @@ export default function DashboardBookingPage() {
             </button>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-6" ref={hsnDropdownRef}>
             {goods.map((item, index) => (
               <div key={index} className="p-6 rounded-lg border border-[#C5A059]/10 bg-[#121212]/50">
                 <div className="flex justify-between items-center mb-4">
@@ -504,21 +618,64 @@ export default function DashboardBookingPage() {
                   )}
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="md:col-span-2">
+                  {/* Description with HSN autocomplete */}
+                  <div className="md:col-span-2 relative">
                     <label className={labelClass}>Description *</label>
-                    <input type="text" required value={item.description} onChange={(e) => updateGoodsItem(index, "description", e.target.value)} className={inputClass} placeholder="Item description" />
+                    <input
+                      type="text"
+                      required
+                      value={item.description}
+                      onChange={(e) => {
+                        updateGoodsItem(index, "description", e.target.value);
+                        searchHSN(e.target.value, index);
+                      }}
+                      onFocus={() => {
+                        if (item.description.length >= 2) searchHSN(item.description, index);
+                      }}
+                      className={inputClass}
+                      placeholder="Type to search HSN items..."
+                      autoComplete="off"
+                    />
+                    {/* HSN Dropdown */}
+                    {hsnDropdownIndex === index && (hsnResults.length > 0 || hsnLoading) && (
+                      <div className="absolute z-30 w-full mt-1 max-h-56 overflow-y-auto bg-[#1a1a1a] border border-[#C5A059]/30 rounded-lg shadow-xl">
+                        {hsnLoading ? (
+                          <div className="flex items-center gap-2 px-4 py-3 text-[#F5F5F0]/60 text-sm">
+                            <div className="h-3 w-3 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin" />
+                            Searching HSN codes...
+                          </div>
+                        ) : (
+                          hsnResults.map((result, ri) => (
+                            <button
+                              key={`${result.code}-${ri}`}
+                              type="button"
+                              onClick={() => {
+                                updateGoodsItem(index, "description", result.description);
+                                updateGoodsItem(index, "hsn_code", result.code);
+                                setHsnDropdownIndex(null);
+                                setHsnResults([]);
+                              }}
+                              className="w-full text-left px-4 py-3 hover:bg-[#C5A059]/20 transition-colors border-b border-[#C5A059]/10 last:border-b-0"
+                            >
+                              <span className="text-[#F5F5F0] text-sm">{result.description}</span>
+                              <span className="ml-2 text-xs text-[#C5A059] font-mono">({result.code})</span>
+                            </button>
+                          ))
+                        )}
+                      </div>
+                    )}
                   </div>
                   <div>
                     <label className={labelClass}>Quantity *</label>
                     <input type="number" required min="1" value={item.quantity} onChange={(e) => updateGoodsItem(index, "quantity", parseInt(e.target.value))} className={inputClass} placeholder="1" />
                   </div>
                   <div>
-                    <label className={labelClass}>HSN Code {shipmentType === "international" ? "*" : ""}</label>
-                    <input type="text" required={shipmentType === "international"} value={item.hsn_code} onChange={(e) => updateGoodsItem(index, "hsn_code", e.target.value)} className={inputClass} placeholder="HSN Code" />
+                    <label className={labelClass}>HSN Code *</label>
+                    <input type="text" required value={item.hsn_code} onChange={(e) => updateGoodsItem(index, "hsn_code", e.target.value)} className={inputClass} placeholder="e.g. 01012100" />
                   </div>
                   <div className="md:col-span-2">
-                    <label className={labelClass}>Value (₹) {shipmentType === "international" ? "*" : ""}</label>
-                    <input type="number" required={shipmentType === "international"} step="0.01" value={item.value} onChange={(e) => updateGoodsItem(index, "value", parseFloat(e.target.value))} className={inputClass} placeholder="0.00" />
+                    <label className={labelClass}>Value (₹) *</label>
+                    <input type="number" required step="0.01" value={item.value} onChange={(e) => updateGoodsItem(index, "value", parseFloat(e.target.value))} className={inputClass} placeholder="0.00" />
                   </div>
                 </div>
               </div>
@@ -548,7 +705,9 @@ export default function DashboardBookingPage() {
             <p className="text-4xl font-bold text-green-400">
               ₹{priceDetails.total_price?.toFixed(2) || priceDetails.total_with_tax_18_percent?.toFixed(2)}
             </p>
-            <p className="text-[#F5F5F0]/60 mt-2">Including all taxes and charges</p>
+            <p className="text-[#F5F5F0]/60 mt-2">
+              Based on chargeable weight of {chargeableWeight.toFixed(2)} kg (incl. taxes)
+            </p>
           </div>
         )}
 
