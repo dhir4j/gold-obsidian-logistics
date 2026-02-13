@@ -29,7 +29,7 @@ export default function DashboardBookingPage() {
   const { session } = useSession();
   const [shipmentType, setShipmentType] = useState<"domestic" | "international">("domestic");
   const [isCalculating, setIsCalculating] = useState(false);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isSubmitting] = useState(false);
   const [priceDetails, setPriceDetails] = useState<any>(null);
 
   // Sender Details
@@ -270,6 +270,15 @@ export default function DashboardBookingPage() {
     }
   };
 
+  const generateShipmentId = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+    let id = "WX-";
+    for (let i = 0; i < 8; i++) {
+      id += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return id;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -283,71 +292,23 @@ export default function DashboardBookingPage() {
       return;
     }
 
-    const userEmail = session?.email || localStorage.getItem("userEmail");
-    if (!userEmail) {
-      alert("Please login to create a booking");
-      router.push("/login");
-      return;
-    }
+    const totalPrice = priceDetails.total_price || priceDetails.total_with_tax_18_percent;
+    const shipmentId = generateShipmentId();
 
-    setIsSubmitting(true);
+    const orderData = {
+      shipmentId,
+      shipmentType,
+      senderName,
+      receiverName,
+      receiverCountry,
+      receiverCity,
+      chargeableWeight,
+      totalPrice,
+      serviceType,
+    };
 
-    try {
-      const apiUrl = process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com";
-      const url =
-        shipmentType === "domestic"
-          ? `${apiUrl}/api/shipments/domestic`
-          : `${apiUrl}/api/shipments/international`;
-
-      const shipmentData = {
-        user_email: userEmail,
-        sender_name: senderName,
-        sender_phone: senderPhone,
-        sender_address_street: senderStreet,
-        sender_address_city: senderCity,
-        sender_address_state: senderState,
-        sender_address_pincode: senderPincode,
-        sender_address_country: senderCountry,
-        receiver_name: receiverName,
-        receiver_phone: receiverPhone,
-        receiver_address_street: receiverStreet,
-        receiver_address_city: receiverCity,
-        receiver_address_state: receiverState,
-        receiver_address_pincode: receiverPincode,
-        receiver_address_country: receiverCountry,
-        package_weight_kg: chargeableWeight,
-        package_length_cm: lengthVal,
-        package_width_cm: widthVal,
-        package_height_cm: heightVal,
-        service_type: serviceType,
-        pickup_date: pickupDate || today,
-        goods: goods,
-        final_total_price_with_tax: priceDetails.total_price || priceDetails.total_with_tax_18_percent,
-      };
-
-      const response = await fetch(url, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-User-Email": userEmail,
-        },
-        body: JSON.stringify(shipmentData),
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        alert(`Booking created successfully! Shipment ID: ${data.shipment_id_str}`);
-        router.push("/dashboard/my-shipments");
-      } else {
-        alert(data.error || "Failed to create booking");
-      }
-    } catch (error) {
-      console.error("Booking error:", error);
-      alert("Failed to create booking. Please try again.");
-    } finally {
-      setIsSubmitting(false);
-    }
+    sessionStorage.setItem("checkoutOrder", JSON.stringify(orderData));
+    router.push("/dashboard/checkout");
   };
 
   const inputClass = "w-full px-4 py-3 bg-[#121212] border border-[#C5A059]/20 rounded-lg text-[#F5F5F0] focus:outline-none focus:border-[#C5A059] transition-colors";
