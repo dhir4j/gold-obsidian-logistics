@@ -20,6 +20,9 @@ export default function RootLayout({
 
   return (
     <html lang="en">
+      <head>
+        <link rel="icon" href="/forsvg.svg" type="image/svg+xml" />
+      </head>
       <body className="antialiased">
         <Loader />
         {!hideChrome && <Navbar />}
