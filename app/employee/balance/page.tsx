@@ -1,17 +1,36 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useSession } from "@/hooks/use-session";
 import { Gift, DollarSign, ArrowRight } from "lucide-react";
 
 export default function BalancePage() {
   const [code, setCode] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [balance, setBalance] = useState<number | null>(null);
   const [message, setMessage] = useState<{
     type: "success" | "error";
     text: string;
   } | null>(null);
   const { session } = useSession();
+
+  const fetchBalance = useCallback(async () => {
+    if (!session?.email) return;
+    try {
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL || "https://www.server.waynexshipping.com"}/api/employee/day-end-stats`,
+        { headers: { "X-User-Email": session.email } }
+      );
+      if (res.ok) {
+        const data = await res.json();
+        setBalance(data.current_balance);
+      }
+    } catch {}
+  }, [session?.email]);
+
+  useEffect(() => {
+    fetchBalance();
+  }, [fetchBalance]);
 
   const handleRedeem = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -53,10 +72,11 @@ export default function BalancePage() {
           text: result.message || "Code redeemed successfully!",
         });
         setCode("");
-        // Optionally reload the page to refresh balance
-        setTimeout(() => {
-          window.location.reload();
-        }, 2000);
+        if (result.new_balance !== undefined) {
+          setBalance(result.new_balance);
+        } else {
+          fetchBalance();
+        }
       } else {
         setMessage({
           type: "error",
@@ -96,7 +116,7 @@ export default function BalancePage() {
               Current Balance
             </p>
             <p className="text-4xl font-serif text-brand-gold">
-              ₹0.00
+              {balance !== null ? `₹${balance.toLocaleString("en-IN", { minimumFractionDigits: 2 })}` : "Loading..."}
             </p>
           </div>
         </div>
