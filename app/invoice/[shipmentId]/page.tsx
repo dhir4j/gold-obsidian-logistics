@@ -108,24 +108,27 @@ export default function InvoicePage({ params }: { params: Promise<{ shipmentId: 
 
   return (
     <div className="min-h-screen bg-[#121212]">
-      {/* Action Bar */}
-      <div className="no-print sticky top-0 z-10 bg-[#121212] border-b border-[#C5A059]/20 px-6 py-4">
-        <div className="max-w-4xl mx-auto flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => router.back()}
-              className="p-2 rounded-lg border border-[#C5A059]/20 text-[#C5A059] hover:bg-[#C5A059]/10 transition-colors"
-            >
-              <ArrowLeft className="h-5 w-5" />
-            </button>
-            <h1 className="font-serif text-xl font-bold text-[#F5F5F0]">
-              Invoice — {shipment.shipment_id_str}
-            </h1>
-          </div>
+      {/* Invoice Sheet */}
+      <div className="max-w-4xl mx-auto pt-8 px-6">
+        <div ref={sheetRef}>
+          <InvoiceSheet shipment={shipment} />
+        </div>
+      </div>
+
+      {/* Action Buttons below the sheet */}
+      <div className="no-print max-w-4xl mx-auto px-6 py-8">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="flex items-center gap-2 px-5 py-3 rounded-lg border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 transition-colors text-sm font-medium"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            Go Back
+          </button>
           <div className="flex items-center gap-3">
             <button
               onClick={handlePrint}
-              className="flex items-center gap-2 px-4 py-2 border border-[#C5A059]/30 text-[#C5A059] rounded-lg hover:bg-[#C5A059]/10 transition-colors text-sm font-medium"
+              className="flex items-center gap-2 px-5 py-3 border border-[#C5A059]/30 text-[#C5A059] rounded-lg hover:bg-[#C5A059]/10 transition-colors text-sm font-medium"
             >
               <Printer className="h-4 w-4" />
               Print
@@ -133,7 +136,7 @@ export default function InvoicePage({ params }: { params: Promise<{ shipmentId: 
             <button
               onClick={handleDownload}
               disabled={downloading}
-              className="flex items-center gap-2 px-4 py-2 bg-[#C5A059] text-[#121212] rounded-lg hover:bg-[#C5A059]/90 transition-colors text-sm font-semibold disabled:opacity-50"
+              className="flex items-center gap-2 px-5 py-3 bg-[#C5A059] text-[#121212] rounded-lg hover:bg-[#C5A059]/90 transition-colors text-sm font-semibold disabled:opacity-50"
             >
               {downloading ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
@@ -143,13 +146,6 @@ export default function InvoicePage({ params }: { params: Promise<{ shipmentId: 
               Download PDF
             </button>
           </div>
-        </div>
-      </div>
-
-      {/* Invoice Sheet */}
-      <div className="max-w-4xl mx-auto p-6">
-        <div ref={sheetRef}>
-          <InvoiceSheet shipment={shipment} />
         </div>
       </div>
     </div>

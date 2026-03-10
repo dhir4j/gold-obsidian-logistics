@@ -16,7 +16,9 @@ export default function RootLayout({
   const pathname = usePathname();
   const isDashboard = pathname?.startsWith('/dashboard');
   const isEmployee = pathname?.startsWith('/employee');
-  const hideChrome = isDashboard || isEmployee;
+  const isAwb = pathname?.startsWith('/awb');
+  const isInvoice = pathname?.startsWith('/invoice');
+  const hideChrome = isDashboard || isEmployee || isAwb || isInvoice;
 
   return (
     <html lang="en">
