@@ -17,7 +17,7 @@ export const CTA = {
 
 export const COMPANY_INFO = {
   address:
-    "1200 Industrial Parkway, Suite 500, Atlanta, GA 30318, United States",
+    "Circular Road, Near Prita Lee Lesson School, Ashok Vihar, Kapurthala, Punjab – 144601",
   gst: "03AAECW3635L1Z8",
   established: "2015",
   tagline: "Your trusted partner for reliable and efficient logistics solutions worldwide",
