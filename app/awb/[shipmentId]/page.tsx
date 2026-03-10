@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Printer, Download, Loader2 } from "lucide-react";
+import { ArrowLeft, Save } from "lucide-react";
 import AwbSheet from "@/components/AwbSheet";
 
 interface ShipmentData {
@@ -38,8 +38,6 @@ export default function AwbPage({ params }: { params: Promise<{ shipmentId: stri
   const [shipment, setShipment] = useState<ShipmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [downloading, setDownloading] = useState(false);
-  const sheetRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     const fetchShipment = async () => {
@@ -58,39 +56,13 @@ export default function AwbPage({ params }: { params: Promise<{ shipmentId: stri
     fetchShipment();
   }, [shipmentId]);
 
-  const handlePrint = () => {
+  const handleSave = () => {
     window.print();
-  };
-
-  const handleDownload = async () => {
-    if (!sheetRef.current) return;
-    setDownloading(true);
-    try {
-      const html2canvas = (await import("html2canvas")).default;
-      const { jsPDF } = await import("jspdf");
-
-      const canvas = await html2canvas(sheetRef.current, {
-        scale: 2,
-        backgroundColor: "#ffffff",
-      });
-
-      const imgData = canvas.toDataURL("image/png");
-      const pdf = new jsPDF("p", "mm", "a4");
-      const pdfWidth = pdf.internal.pageSize.getWidth();
-      const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
-
-      pdf.addImage(imgData, "PNG", 0, 0, pdfWidth, pdfHeight);
-      pdf.save(`AWB-${shipmentId}.pdf`);
-    } catch {
-      alert("Failed to generate PDF. Please try printing instead.");
-    } finally {
-      setDownloading(false);
-    }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#121212]">
+      <div className="flex items-center justify-center min-h-screen bg-white">
         <div className="h-8 w-8 border-2 border-[#C5A059] border-t-transparent rounded-full animate-spin" />
       </div>
     );
@@ -98,11 +70,11 @@ export default function AwbPage({ params }: { params: Promise<{ shipmentId: stri
 
   if (error || !shipment) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-screen bg-[#121212] gap-4">
-        <p className="text-red-400">{error || "Shipment not found"}</p>
+      <div className="flex flex-col items-center justify-center min-h-screen bg-white gap-4">
+        <p className="text-red-500">{error || "Shipment not found"}</p>
         <button
           onClick={() => router.back()}
-          className="px-4 py-2 bg-[#C5A059] text-[#121212] rounded-lg font-medium"
+          className="px-4 py-2 bg-[#C5A059] text-white rounded-lg font-medium"
         >
           Go Back
         </button>
@@ -111,12 +83,10 @@ export default function AwbPage({ params }: { params: Promise<{ shipmentId: stri
   }
 
   return (
-    <div className="min-h-screen bg-[#121212]">
+    <div className="min-h-screen bg-white">
       {/* AWB Sheet */}
       <div className="max-w-4xl mx-auto pt-8 px-6">
-        <div ref={sheetRef}>
-          <AwbSheet shipment={shipment} />
-        </div>
+        <AwbSheet shipment={shipment} />
       </div>
 
       {/* Action Buttons below the sheet */}
@@ -124,32 +94,18 @@ export default function AwbPage({ params }: { params: Promise<{ shipmentId: stri
         <div className="flex items-center justify-between">
           <button
             onClick={() => router.back()}
-            className="flex items-center gap-2 px-5 py-3 rounded-lg border border-[#C5A059]/30 text-[#C5A059] hover:bg-[#C5A059]/10 transition-colors text-sm font-medium"
+            className="flex items-center gap-2 px-5 py-3 rounded-lg border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors text-sm font-medium"
           >
             <ArrowLeft className="h-4 w-4" />
             Go Back
           </button>
-          <div className="flex items-center gap-3">
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 px-5 py-3 border border-[#C5A059]/30 text-[#C5A059] rounded-lg hover:bg-[#C5A059]/10 transition-colors text-sm font-medium"
-            >
-              <Printer className="h-4 w-4" />
-              Print
-            </button>
-            <button
-              onClick={handleDownload}
-              disabled={downloading}
-              className="flex items-center gap-2 px-5 py-3 bg-[#C5A059] text-[#121212] rounded-lg hover:bg-[#C5A059]/90 transition-colors text-sm font-semibold disabled:opacity-50"
-            >
-              {downloading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Download className="h-4 w-4" />
-              )}
-              Download PDF
-            </button>
-          </div>
+          <button
+            onClick={handleSave}
+            className="flex items-center gap-2 px-5 py-3 bg-[#C5A059] text-white rounded-lg hover:bg-[#b8933f] transition-colors text-sm font-semibold"
+          >
+            <Save className="h-4 w-4" />
+            Save
+          </button>
         </div>
       </div>
     </div>
