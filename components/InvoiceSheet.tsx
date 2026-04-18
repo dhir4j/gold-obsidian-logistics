@@ -9,6 +9,11 @@ interface GoodsDetail {
   value: number;
 }
 
+interface BoxDetail {
+  box_number: number;
+  weight_kg: number;
+}
+
 interface InvoiceSheetProps {
   shipment: {
     shipment_id_str: string;
@@ -31,6 +36,7 @@ interface InvoiceSheetProps {
     tax_amount_18_percent: number;
     total_with_tax_18_percent: number;
     goods_details: GoodsDetail[];
+    box_details?: BoxDetail[];
   };
 }
 
@@ -228,6 +234,32 @@ export default function InvoiceSheet({ shipment }: InvoiceSheetProps) {
             ))}
           </tbody>
         </table>
+
+        {/* Box Details */}
+        {shipment.box_details && shipment.box_details.length > 0 && (
+          <div className="border-t border-gray-300 pt-3 mt-2">
+            <p className="font-bold mb-2">Box Details:</p>
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-gray-100">
+                  <th className="p-2">Box No.</th>
+                  <th className="p-2">Weight (kg)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {shipment.box_details.map((box, i) => (
+                  <tr key={i} className="border-b border-gray-200">
+                    <td className="p-2 font-medium">Box {box.box_number}</td>
+                    <td className="p-2">{box.weight_kg} kg</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="text-gray-500 text-xs mt-1">
+              Total Boxes: {shipment.box_details.length} | Max weight per box: 20 kg
+            </p>
+          </div>
+        )}
 
         {/* Totals */}
         <div className="flex justify-end pt-4">

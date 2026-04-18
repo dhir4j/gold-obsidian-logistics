@@ -26,6 +26,7 @@ interface ShipmentData {
   tax_amount_18_percent: number;
   total_with_tax_18_percent: number;
   goods_details: { description: string; quantity: number; hsn_code: string; value: number }[];
+  box_details: { box_number: number; weight_kg: number }[];
 }
 
 export default function InvoicePage({ params }: { params: Promise<{ shipmentId: string }> }) {
